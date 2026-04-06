@@ -1,0 +1,6 @@
+@import "tailwindcss";
+
+@keyframes orbBreathe {
+  0%, 100% { transform: scale(1.8); opacity: 0.3; }
+  50% { transform: scale(2.2); opacity: 0.6; }
+}
