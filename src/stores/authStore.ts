@@ -21,7 +21,7 @@ interface AuthState {
   setDisplayName: (name: string) => void;
 }
 
-export const useAuthStore = create<AuthState>((set, _get) => ({
+export const useAuthStore = create<AuthState>((set) => ({
   userId: null,
   email: null,
   displayName: "",

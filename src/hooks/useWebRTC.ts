@@ -7,7 +7,6 @@ export const useWebRTC = () => {
   const rtcRef = useRef(new WebRTCManager());
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const {
-    micStream,
     micLevel,
     speakerLevel,
     requestMicrophone,
@@ -17,6 +16,26 @@ export const useWebRTC = () => {
 
   const { call, client, callUser, acceptCall, declineCall, endCall } =
     usePresenceStore();
+
+  // Use a ref for the cleanup function so the effect can reference it
+  // without a forward-declaration issue
+  const cleanupRef = useRef(() => {});
+
+  const handleEndCall = useCallback(() => {
+    rtcRef.current.destroy();
+    stopMicrophone();
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.srcObject = null;
+      audioRef.current = null;
+    }
+    endCall();
+  }, [stopMicrophone, endCall]);
+
+  // Keep ref in sync
+  useEffect(() => {
+    cleanupRef.current = handleEndCall;
+  }, [handleEndCall]);
 
   // Wire up WEBRTC_SIGNAL handling from presence store
   useEffect(() => {
@@ -40,7 +59,7 @@ export const useWebRTC = () => {
 
     // Clean up on peer close
     rtc.onClose = () => {
-      handleEndCall();
+      cleanupRef.current();
     };
 
     // Register to receive incoming WebRTC signals from presence store
@@ -83,25 +102,12 @@ export const useWebRTC = () => {
     [declineCall],
   );
 
-  const handleEndCall = useCallback(() => {
-    rtcRef.current.destroy();
-    stopMicrophone();
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.srcObject = null;
-      audioRef.current = null;
-    }
-    endCall();
-  }, [stopMicrophone, endCall]);
-
-  // Forward incoming WebRTC signals to the peer
   const handleSignal = useCallback((signal: unknown) => {
     rtcRef.current.signal(signal);
   }, []);
 
   return {
     call,
-    micStream,
     micLevel,
     speakerLevel,
     startCall: handleStartCall,

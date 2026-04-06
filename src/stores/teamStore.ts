@@ -50,13 +50,16 @@ export const useTeamStore = create<TeamState>((set, get) => ({
     }
 
     const teams: TeamInfo[] = (data ?? [])
-      .filter((row: any) => row.teams)
-      .map((row: any) => ({
-        id: row.teams.id,
-        name: row.teams.name,
-        invite_code: row.teams.invite_code ?? "",
-        role: row.role ?? "member",
-      }));
+      .filter((row: Record<string, unknown>) => row.teams)
+      .map((row: Record<string, unknown>) => {
+        const team = row.teams as Record<string, string>;
+        return {
+          id: team.id,
+          name: team.name,
+          invite_code: team.invite_code ?? "",
+          role: (row.role as "admin" | "member") ?? "member",
+        };
+      });
 
     set({ teams, loading: false });
   },
@@ -146,12 +149,15 @@ export const useTeamStore = create<TeamState>((set, get) => ({
     }
 
     const members: TeamMemberInfo[] = data
-      .filter((row: any) => row.profiles)
-      .map((row: any) => ({
-        user_id: row.profiles.id,
-        display_name: row.profiles.display_name,
-        role: row.role ?? "member",
-      }));
+      .filter((row: Record<string, unknown>) => row.profiles)
+      .map((row: Record<string, unknown>) => {
+        const profile = row.profiles as Record<string, string>;
+        return {
+          user_id: profile.id,
+          display_name: profile.display_name,
+          role: (row.role as "admin" | "member") ?? "member",
+        };
+      });
 
     set({ teamMembers: members });
   },

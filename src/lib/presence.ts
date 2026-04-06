@@ -15,8 +15,9 @@
 import type { PresenceOutMessage, PresenceInMessage } from "../types";
 
 const RELAY_HOST = import.meta.env.VITE_RELAY_HOST ?? "relay.ohinter.com";
-const RELAY_PORT = import.meta.env.VITE_RELAY_WS_PORT ?? "50003"; // WSS port (new, alongside TCP 50002)
-const RELAY_AUTH_KEY = import.meta.env.VITE_RELAY_KEY ?? "";
+const RELAY_PORT = import.meta.env.VITE_RELAY_WS_PORT ?? "50003";
+const RELAY_PROTOCOL = import.meta.env.VITE_RELAY_PROTOCOL ?? "wss"; // "ws" or "wss"
+const RELAY_AUTH_KEY = import.meta.env.VITE_RELAY_KEY ?? "vox-relay-v1-2026";
 
 type MessageHandler = (msg: PresenceInMessage) => void;
 type StatusHandler = (connected: boolean) => void;
@@ -41,7 +42,7 @@ export class PresenceClient {
     this.shouldReconnect = true;
     this.disconnect();
 
-    const url = `wss://${RELAY_HOST}:${RELAY_PORT}/ws`;
+    const url = `${RELAY_PROTOCOL}://${RELAY_HOST}:${RELAY_PORT}`;
     this.ws = new WebSocket(url);
 
     this.ws.onopen = () => {

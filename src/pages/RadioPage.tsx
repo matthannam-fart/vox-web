@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { DARK } from "../lib/theme";
 import type { Page } from "../components/Layout";
 
@@ -11,32 +11,32 @@ interface RadioPageProps {
   onNavigate: (page: Page) => void;
 }
 
-export const RadioPage = ({ onNavigate: _onNavigate }: RadioPageProps) => {
+export const RadioPage = (props: RadioPageProps) => {
+  void props; // onNavigate available for future use
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
   const [channel, setChannel] = useState<1 | 2>(1);
   const [volume, setVolume] = useState(0.8);
   const [title, setTitle] = useState("NTS Radio");
 
-  // Fetch NTS metadata
-  const fetchTitle = useCallback(async () => {
-    try {
-      const resp = await fetch("https://www.nts.live/api/v2/live");
-      const data = await resp.json();
-      const ch = data?.results?.[channel - 1];
-      if (ch?.now?.broadcast_title) {
-        setTitle(ch.now.broadcast_title);
-      }
-    } catch {
-      // ignore
-    }
-  }, [channel]);
-
   useEffect(() => {
-    fetchTitle();
-    const interval = setInterval(fetchTitle, 30000);
-    return () => clearInterval(interval);
-  }, [fetchTitle]);
+    let cancelled = false;
+    const doFetch = async () => {
+      try {
+        const resp = await fetch("https://www.nts.live/api/v2/live");
+        const data = await resp.json();
+        const ch = data?.results?.[channel - 1];
+        if (!cancelled && ch?.now?.broadcast_title) {
+          setTitle(ch.now.broadcast_title);
+        }
+      } catch {
+        // ignore
+      }
+    };
+    doFetch();
+    const interval = setInterval(doFetch, 30000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [channel]);
 
   const togglePlay = () => {
     if (playing) {

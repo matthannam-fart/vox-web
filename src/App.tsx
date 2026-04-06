@@ -16,20 +16,20 @@ export const App = () => {
   const { userId, displayName, initialized, initialize } = useAuthStore();
   const { activeTeamId } = useSettingsStore();
   const { connect, disconnect, mode } = usePresenceStore();
-  const [page, setPage] = useState<Page>("welcome");
+
+  // Derive page from auth/team state instead of using an effect
+  const defaultPage: Page = userId && activeTeamId ? "users" : "welcome";
+  const [page, setPage] = useState<Page>(defaultPage);
+
+  // Sync page when auth/team state changes
+  const derivedPage = userId && activeTeamId ? "users" : "welcome";
+  useEffect(() => {
+    setPage(derivedPage);
+  }, [derivedPage]);
 
   useEffect(() => {
     initialize();
   }, [initialize]);
-
-  // Default page based on team state
-  useEffect(() => {
-    if (userId && activeTeamId) {
-      setPage("users");
-    } else if (userId) {
-      setPage("welcome");
-    }
-  }, [userId, activeTeamId]);
 
   // Connect/disconnect presence when team changes
   useEffect(() => {
@@ -39,6 +39,7 @@ export const App = () => {
     return () => {
       disconnect();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only reconnect when identity/team changes, not on every mode change
   }, [userId, activeTeamId, displayName]);
 
   if (!initialized) {
