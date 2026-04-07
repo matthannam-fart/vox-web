@@ -96,14 +96,23 @@ export const useTeamStore = create<TeamState>((set, get) => ({
 
   joinTeamByCode: async (code, userId) => {
     set({ error: null });
+    const trimmedCode = code.toUpperCase().trim();
+    console.log("[teamStore] joinTeamByCode:", trimmedCode);
+
     // Look up team by invite code
     const { data: teams, error: lookupError } = await supabase
       .from("teams")
       .select("id, name, invite_code")
-      .eq("invite_code", code.toUpperCase().trim());
+      .eq("invite_code", trimmedCode);
 
-    if (lookupError || !teams || teams.length === 0) {
-      set({ error: "No team found for that code" });
+    console.log("[teamStore] lookup result:", { teams, lookupError });
+
+    if (lookupError) {
+      set({ error: `Lookup failed: ${lookupError.message}` });
+      return null;
+    }
+    if (!teams || teams.length === 0) {
+      set({ error: `No team found for code "${trimmedCode}"` });
       return null;
     }
 
@@ -117,8 +126,10 @@ export const useTeamStore = create<TeamState>((set, get) => ({
         { onConflict: "team_id,user_id" },
       );
 
+    console.log("[teamStore] join result:", { joinError });
+
     if (joinError) {
-      set({ error: joinError.message });
+      set({ error: `Join failed: ${joinError.message}` });
       return null;
     }
 
