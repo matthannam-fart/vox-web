@@ -7,12 +7,13 @@ export const useWebRTC = () => {
   const rtcRef = useRef(new WebRTCManager());
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const {
-    micStream,
     micLevel,
     speakerLevel,
     requestMicrophone,
     stopMicrophone,
     playRemoteStream,
+    muteMic,
+    unmuteMic,
   } = useAudio();
 
   const { call, client, callUser, acceptCall, declineCall, endCall } =
@@ -28,6 +29,7 @@ export const useWebRTC = () => {
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.srcObject = null;
+      audioRef.current.remove();
       audioRef.current = null;
     }
     endCall();
@@ -108,14 +110,6 @@ export const useWebRTC = () => {
   const handleSignal = useCallback((signal: unknown) => {
     rtcRef.current.signal(signal);
   }, []);
-
-  const muteMic = useCallback(() => {
-    micStream?.getAudioTracks().forEach((t) => { t.enabled = false; });
-  }, [micStream]);
-
-  const unmuteMic = useCallback(() => {
-    micStream?.getAudioTracks().forEach((t) => { t.enabled = true; });
-  }, [micStream]);
 
   return {
     call,

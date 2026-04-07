@@ -71,6 +71,15 @@ export const UsersPage = ({ onNavigate }: UsersPageProps) => {
   const isOutgoingCall =
     call.status === "ringing" && selectedUserId === call.peerId;
 
+  // Auto-accept incoming calls (for now — IncomingCallBanner UX comes later)
+  useEffect(() => {
+    if (isIncomingCall && call.peerId && call.peerName) {
+      console.log("[users] Auto-accepting call from", call.peerName);
+      rtcAcceptCall(call.peerId, call.roomCode ?? "");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isIncomingCall, call.peerId, call.peerName]);
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <ContentHeader teamName={activeTeamName} onNavigate={onNavigate} />
@@ -132,9 +141,19 @@ export const UsersPage = ({ onNavigate }: UsersPageProps) => {
               name={user.name}
               mode={user.mode}
               state={getUserState(user.user_id)}
-              onClick={(uid) =>
-                setSelectedUserId(uid === selectedUserId ? null : uid)
-              }
+              onClick={(uid) => {
+                if (uid === selectedUserId) {
+                  // Clicking selected user ends call
+                  rtcEndCall();
+                  setSelectedUserId(null);
+                } else {
+                  // Clicking new user starts call immediately
+                  setSelectedUserId(uid);
+                  if (call.status === "idle") {
+                    startCall(uid);
+                  }
+                }
+              }}
             />
           ))}
         </div>
@@ -169,6 +188,15 @@ export const UsersPage = ({ onNavigate }: UsersPageProps) => {
         className="px-3 py-2 flex flex-col gap-2"
         style={{ borderTop: `1px solid ${DARK.BORDER_LT}` }}
       >
+        {(call.status === "connected" || call.status === "connecting") && (
+          <button
+            onClick={rtcEndCall}
+            className="text-[10px] cursor-pointer bg-transparent border-none self-end"
+            style={{ color: DARK.DANGER }}
+          >
+            End call
+          </button>
+        )}
         <PTTButton
           targetName={
             call.status === "connected" || call.status === "connecting"
@@ -196,14 +224,17 @@ export const UsersPage = ({ onNavigate }: UsersPageProps) => {
             }
           }}
         />
-        <div className="flex items-center justify-between">
-          <span className="text-[10px]" style={{ color: DARK.TEXT_FAINT }}>
-            {connected ? "Connected" : "Disconnected"}
-            {selectedUserId ? ` | sel: ${selectedUserId.slice(0, 8)}` : " | no sel"}
-          </span>
-          <span className="text-[10px]" style={{ color: DARK.TEXT_FAINT }}>
-            {teamOnlineUsers.length} online / {onlineUsers.length} total
-          </span>
+        <div className="flex flex-col text-[9px]" style={{ color: DARK.TEXT_FAINT }}>
+          <div className="flex justify-between">
+            <span>{connected ? "✓ relay" : "✗ relay"}</span>
+            <span>call: {call.status}</span>
+            <span>mic: {micLevel.toFixed(2)}</span>
+            <span>spk: {speakerLevel.toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>peer: {call.peerName ?? "—"}</span>
+            <span>{teamOnlineUsers.length}/{onlineUsers.length} online</span>
+          </div>
         </div>
       </div>
     </div>

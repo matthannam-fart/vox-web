@@ -3,7 +3,9 @@
   "short_name": "Vox",
   "description": "Push-to-talk team intercom",
   "start_url": "/",
-  "display": "standalone",
+  "display": "minimal-ui",
+  "display_override": ["window-controls-overlay", "minimal-ui", "standalone"],
+  "orientation": "portrait",
   "background_color": "#1e1e1e",
   "theme_color": "#1e1e1e",
   "icons": [

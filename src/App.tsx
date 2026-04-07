@@ -10,6 +10,7 @@ import { SettingsPage } from "./pages/SettingsPage";
 import { RadioPage } from "./pages/RadioPage";
 import { Layout, type Page } from "./components/Layout";
 import { InstallPrompt } from "./components/InstallPrompt";
+import { PopoutButton } from "./components/PopoutButton";
 import { DARK } from "./lib/theme";
 
 export const App = () => {
@@ -84,6 +85,7 @@ export const App = () => {
       <Layout page={page} onNavigate={setPage} showSidebar={showSidebar}>
         {renderPage()}
       </Layout>
+      <PopoutButton />
       <InstallPrompt />
     </>
   );

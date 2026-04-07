@@ -67,7 +67,7 @@ export const PTTButton = ({ targetName, onPress, onRelease, disabled, isInCall }
       {held
         ? "TALKING"
         : isInCall
-          ? `Hold to talk to ${targetName}`
+          ? targetName ? `Hold to talk to ${targetName}` : "Hold to talk"
           : targetName
             ? `Hold to call ${targetName}`
             : "Select a user to talk"}

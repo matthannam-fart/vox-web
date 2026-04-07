@@ -11,10 +11,28 @@ interface TeamsPageProps {
 
 export const TeamsPage = ({ onNavigate }: TeamsPageProps) => {
   const { userId } = useAuthStore();
-  const { teams, loading, loadMyTeams, leaveTeam } = useTeamStore();
+  const { teams, loading, loadMyTeams, leaveTeam, joinTeamByCode } = useTeamStore();
   const { activeTeamId, activeTeamName, setActiveTeam } = useSettingsStore();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [confirmLeave, setConfirmLeave] = useState(false);
+  const [inviteCode, setInviteCode] = useState("");
+  const [joinError, setJoinError] = useState("");
+
+  const handleJoinByCode = async () => {
+    if (!inviteCode.trim() || !userId) return;
+    setJoinError("");
+    const team = await joinTeamByCode(inviteCode.trim(), userId);
+    if (team) {
+      setActiveTeam(team.id, team.name);
+      setInviteCode("");
+      onNavigate("users");
+    } else {
+      setJoinError("No team found for that code");
+    }
+  };
+
+  const formatCode = (val: string) =>
+    val.replace(/[^a-zA-Z0-9-]/g, "").toUpperCase().slice(0, 10);
 
   useEffect(() => {
     if (userId) loadMyTeams(userId);
@@ -104,6 +122,37 @@ export const TeamsPage = ({ onNavigate }: TeamsPageProps) => {
         >
           + Create Team
         </button>
+
+        {/* Join by code */}
+        <div className="flex gap-2">
+          <input
+            type="text"
+            placeholder="VOX-XXXXX"
+            maxLength={10}
+            value={inviteCode}
+            onChange={(e) => setInviteCode(formatCode(e.target.value))}
+            onKeyDown={(e) => e.key === "Enter" && handleJoinByCode()}
+            className="flex-1 rounded-[6px] px-2 py-1.5 text-[11px] text-center tracking-[1.5px] outline-none"
+            style={{
+              background: DARK.BG_RAISED,
+              border: `1px solid ${DARK.BORDER}`,
+              color: DARK.TEXT,
+            }}
+          />
+          <button
+            onClick={handleJoinByCode}
+            disabled={!inviteCode.trim()}
+            className="rounded-[6px] px-3 py-1.5 text-[11px] font-bold cursor-pointer disabled:opacity-50"
+            style={{ background: DARK.ACCENT, color: "white", border: "none" }}
+          >
+            Join
+          </button>
+        </div>
+        {joinError && (
+          <p className="text-[10px] text-center" style={{ color: DARK.DANGER }}>
+            {joinError}
+          </p>
+        )}
 
         {activeTeamId && (
           confirmLeave ? (

@@ -40,8 +40,8 @@ export const WelcomePage = ({ onNavigate }: WelcomePageProps) => {
   };
 
   const formatCode = (val: string) => {
-    // Auto-format: strip non-alphanumeric, uppercase, max 10 chars
-    return val.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 10);
+    // Auto-format: keep alphanumeric and dashes, uppercase, max 10 chars
+    return val.replace(/[^a-zA-Z0-9-]/g, "").toUpperCase().slice(0, 10);
   };
 
   return (

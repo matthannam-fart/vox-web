@@ -10,6 +10,7 @@ import Peer from "simple-peer";
 type SignalHandler = (data: unknown) => void;
 type StreamHandler = (stream: MediaStream) => void;
 type CloseHandler = () => void;
+type ConnectHandler = () => void;
 
 export class WebRTCManager {
   private peer: Peer.Instance | null = null;
@@ -17,9 +18,11 @@ export class WebRTCManager {
   onSignal: SignalHandler | null = null;
   onStream: StreamHandler | null = null;
   onClose: CloseHandler | null = null;
+  onConnect: ConnectHandler | null = null;
 
   createPeer(initiator: boolean, localStream: MediaStream) {
     this.destroy();
+    console.log(`[webrtc] Creating peer (initiator=${initiator})`);
 
     this.peer = new Peer({
       initiator,
@@ -34,14 +37,22 @@ export class WebRTCManager {
     });
 
     this.peer.on("signal", (data) => {
+      console.log("[webrtc] Outgoing signal:", (data as { type?: string }).type);
       this.onSignal?.(data);
     });
 
+    this.peer.on("connect", () => {
+      console.log("[webrtc] Peer CONNECTED");
+      this.onConnect?.();
+    });
+
     this.peer.on("stream", (stream) => {
+      console.log("[webrtc] Remote stream received, tracks:", stream.getTracks().length);
       this.onStream?.(stream);
     });
 
     this.peer.on("close", () => {
+      console.log("[webrtc] Peer closed");
       this.onClose?.();
     });
 
