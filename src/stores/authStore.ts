@@ -94,18 +94,20 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   signInWithGoogle: async () => {
-    // Desktop uses PKCE with local callback server; web uses Supabase's built-in redirect
+    // Use the full app URL including base path so OAuth redirects back correctly
+    const redirectTo = `${window.location.origin}${import.meta.env.BASE_URL}`;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: window.location.origin },
+      options: { redirectTo },
     });
     return error ? { error: error.message } : {};
   },
 
   signInWithMagicLink: async (email) => {
+    const redirectTo = `${window.location.origin}${import.meta.env.BASE_URL}`;
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: window.location.origin },
+      options: { emailRedirectTo: redirectTo },
     });
     return error ? { error: error.message } : {};
   },
