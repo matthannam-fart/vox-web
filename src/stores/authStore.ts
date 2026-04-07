@@ -41,15 +41,31 @@ export const useAuthStore = create<AuthState>((set) => ({
         initialized: true,
       });
 
-      // Fetch profile from Supabase (same as supabase_client.py get_profile)
+      // Fetch profile (use .maybeSingle to avoid 406 if missing)
       const { data: profile } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", session.user.id)
-        .single();
+        .maybeSingle();
 
       if (profile) {
         set({ profile, displayName: profile.display_name });
+      } else {
+        // Auto-create profile from auth metadata or email
+        const userMeta = session.user.user_metadata as { full_name?: string; name?: string } | undefined;
+        const displayName =
+          userMeta?.full_name ||
+          userMeta?.name ||
+          session.user.email?.split("@")[0] ||
+          "User";
+        const { data: newProfile } = await supabase
+          .from("profiles")
+          .upsert({ id: session.user.id, display_name: displayName })
+          .select()
+          .single();
+        if (newProfile) {
+          set({ profile: newProfile, displayName: newProfile.display_name });
+        }
       }
     } else {
       set({ initialized: true });

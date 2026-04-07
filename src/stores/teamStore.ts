@@ -118,19 +118,27 @@ export const useTeamStore = create<TeamState>((set, get) => ({
 
     const teamData = teams[0];
 
-    // Upsert membership (avoids duplicates)
-    const { error: joinError } = await supabase
+    // Check if already a member
+    const { data: existing } = await supabase
       .from("team_members")
-      .upsert(
-        { team_id: teamData.id, user_id: userId, role: "member" },
-        { onConflict: "team_id,user_id" },
-      );
+      .select("user_id")
+      .eq("team_id", teamData.id)
+      .eq("user_id", userId)
+      .maybeSingle();
 
-    console.log("[teamStore] join result:", { joinError });
+    if (!existing) {
+      const { error: joinError } = await supabase
+        .from("team_members")
+        .insert({ team_id: teamData.id, user_id: userId, role: "member" });
 
-    if (joinError) {
-      set({ error: `Join failed: ${joinError.message}` });
-      return null;
+      console.log("[teamStore] join result:", { joinError });
+
+      if (joinError) {
+        set({ error: `Join failed: ${joinError.message}` });
+        return null;
+      }
+    } else {
+      console.log("[teamStore] already a member");
     }
 
     const team: TeamInfo = {
