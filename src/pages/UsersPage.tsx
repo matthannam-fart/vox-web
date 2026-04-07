@@ -32,6 +32,8 @@ export const UsersPage = ({ onNavigate }: UsersPageProps) => {
     acceptCall: rtcAcceptCall,
     declineCall: rtcDeclineCall,
     endCall: rtcEndCall,
+    muteMic,
+    unmuteMic,
   } = useWebRTC();
 
   useEffect(() => {
@@ -168,19 +170,39 @@ export const UsersPage = ({ onNavigate }: UsersPageProps) => {
         style={{ borderTop: `1px solid ${DARK.BORDER_LT}` }}
       >
         <PTTButton
-          targetName={selectedUser?.name ?? null}
-          disabled={!selectedUserId || call.status !== "idle"}
+          targetName={
+            call.status === "connected" || call.status === "connecting"
+              ? call.peerName
+              : selectedUser?.name ?? null
+          }
+          disabled={
+            !selectedUserId &&
+            call.status !== "connected" &&
+            call.status !== "connecting"
+          }
+          isInCall={call.status === "connected" || call.status === "connecting"}
           onPress={() => {
-            if (selectedUserId) startCall(selectedUserId);
+            if (call.status === "connected" || call.status === "connecting") {
+              unmuteMic();
+            } else if (selectedUserId) {
+              startCall(selectedUserId);
+            }
           }}
-          onRelease={rtcEndCall}
+          onRelease={() => {
+            if (call.status === "connected" || call.status === "connecting") {
+              muteMic();
+            } else {
+              rtcEndCall();
+            }
+          }}
         />
         <div className="flex items-center justify-between">
           <span className="text-[10px]" style={{ color: DARK.TEXT_FAINT }}>
             {connected ? "Connected" : "Disconnected"}
+            {selectedUserId ? ` | sel: ${selectedUserId.slice(0, 8)}` : " | no sel"}
           </span>
           <span className="text-[10px]" style={{ color: DARK.TEXT_FAINT }}>
-            {teamOnlineUsers.length} online
+            {teamOnlineUsers.length} online / {onlineUsers.length} total
           </span>
         </div>
       </div>

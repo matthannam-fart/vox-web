@@ -7,6 +7,7 @@ export const useWebRTC = () => {
   const rtcRef = useRef(new WebRTCManager());
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const {
+    micStream,
     micLevel,
     speakerLevel,
     requestMicrophone,
@@ -78,8 +79,9 @@ export const useWebRTC = () => {
   const handleStartCall = useCallback(
     async (targetUserId: string) => {
       const stream = await requestMicrophone();
+      // Start muted — PTT unmutes
+      stream.getAudioTracks().forEach((t) => { t.enabled = false; });
       callUser(targetUserId);
-      // Create initiator peer
       rtcRef.current.createPeer(true, stream);
     },
     [requestMicrophone, callUser],
@@ -88,8 +90,9 @@ export const useWebRTC = () => {
   const handleAcceptCall = useCallback(
     async (fromUserId: string, roomCode: string) => {
       const stream = await requestMicrophone();
+      // Start muted — PTT unmutes
+      stream.getAudioTracks().forEach((t) => { t.enabled = false; });
       acceptCall(fromUserId, roomCode);
-      // Create responder peer
       rtcRef.current.createPeer(false, stream);
     },
     [requestMicrophone, acceptCall],
@@ -106,6 +109,14 @@ export const useWebRTC = () => {
     rtcRef.current.signal(signal);
   }, []);
 
+  const muteMic = useCallback(() => {
+    micStream?.getAudioTracks().forEach((t) => { t.enabled = false; });
+  }, [micStream]);
+
+  const unmuteMic = useCallback(() => {
+    micStream?.getAudioTracks().forEach((t) => { t.enabled = true; });
+  }, [micStream]);
+
   return {
     call,
     micLevel,
@@ -115,5 +126,7 @@ export const useWebRTC = () => {
     declineCall: handleDeclineCall,
     endCall: handleEndCall,
     handleSignal,
+    muteMic,
+    unmuteMic,
   };
 };

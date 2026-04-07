@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { DARK, COLORS } from "../lib/theme";
 
 interface PTTButtonProps {
@@ -6,23 +6,27 @@ interface PTTButtonProps {
   onPress: () => void;
   onRelease: () => void;
   disabled?: boolean;
+  isInCall?: boolean;
 }
 
-export const PTTButton = ({ targetName, onPress, onRelease, disabled }: PTTButtonProps) => {
+export const PTTButton = ({ targetName, onPress, onRelease, disabled, isInCall }: PTTButtonProps) => {
   const [held, setHeld] = useState(false);
+  const heldRef = useRef(false);
 
   const handleDown = useCallback(() => {
-    if (disabled) return;
+    if (disabled || heldRef.current) return;
+    heldRef.current = true;
     setHeld(true);
     onPress();
   }, [disabled, onPress]);
 
   const handleUp = useCallback(() => {
-    if (held) {
+    if (heldRef.current) {
+      heldRef.current = false;
       setHeld(false);
       onRelease();
     }
-  }, [held, onRelease]);
+  }, [onRelease]);
 
   // Spacebar PTT
   useEffect(() => {
@@ -62,9 +66,11 @@ export const PTTButton = ({ targetName, onPress, onRelease, disabled }: PTTButto
     >
       {held
         ? "TALKING"
-        : targetName
+        : isInCall
           ? `Hold to talk to ${targetName}`
-          : "Select a user to talk"}
+          : targetName
+            ? `Hold to call ${targetName}`
+            : "Select a user to talk"}
     </button>
   );
 };

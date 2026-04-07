@@ -13,8 +13,9 @@ import { InstallPrompt } from "./components/InstallPrompt";
 import { DARK } from "./lib/theme";
 
 export const App = () => {
-  const { userId, displayName, initialized, initialize } = useAuthStore();
-  const { activeTeamId } = useSettingsStore();
+  const { userId, displayName: authDisplayName, email, initialized, initialize } = useAuthStore();
+  const { activeTeamId, displayName: settingsDisplayName } = useSettingsStore();
+  const displayName = authDisplayName || settingsDisplayName || email || "";
   const { connect, disconnect, mode } = usePresenceStore();
 
   // Derive page from auth/team state instead of using an effect
