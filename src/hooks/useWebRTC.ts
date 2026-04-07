@@ -6,6 +6,8 @@ import { useAudio } from "./useAudio";
 export const useWebRTC = () => {
   const rtcRef = useRef(new WebRTCManager());
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  // Track which peer ID we currently have an active WebRTC connection with
+  const activePeerIdRef = useRef<string | null>(null);
   const {
     micLevel,
     speakerLevel,
@@ -19,11 +21,8 @@ export const useWebRTC = () => {
   const { call, client, callUser, acceptCall, declineCall, endCall } =
     usePresenceStore();
 
-  // Use a ref for the cleanup function so the effect can reference it
-  // without a forward-declaration issue
-  const cleanupRef = useRef(() => {});
-
   const handleEndCall = useCallback(() => {
+    activePeerIdRef.current = null;
     rtcRef.current.destroy();
     stopMicrophone();
     if (audioRef.current) {
@@ -35,54 +34,55 @@ export const useWebRTC = () => {
     endCall();
   }, [stopMicrophone, endCall]);
 
-  // Keep ref in sync
-  useEffect(() => {
-    cleanupRef.current = handleEndCall;
-  }, [handleEndCall]);
-
-  // Wire up WEBRTC_SIGNAL handling from presence store
+  // Wire up WEBRTC_SIGNAL handling from presence store (one-time setup)
   useEffect(() => {
     const rtc = rtcRef.current;
 
-    // Forward outgoing signals to relay via presence WebSocket
-    rtc.onSignal = (data) => {
-      if (call.peerId) {
-        client?.send({
-          type: "WEBRTC_SIGNAL",
-          target_user_id: call.peerId,
-          signal: data,
-        });
-      }
-    };
-
-    // Play incoming audio stream
     rtc.onStream = (stream) => {
       audioRef.current = playRemoteStream(stream);
     };
 
-    // Clean up on peer close
+    // Only end call if peer closes unexpectedly (not when we replace it)
     rtc.onClose = () => {
-      cleanupRef.current();
+      console.log("[webrtc] onClose fired, activePeerId:", activePeerIdRef.current);
+      // Don't trigger endCall here — handleEndCall is the only authority
     };
 
-    // Register to receive incoming WebRTC signals from presence store
     setWebRTCSignalHandler((signal) => {
       rtc.signal(signal);
     });
 
     return () => {
-      rtc.onSignal = null;
       rtc.onStream = null;
       rtc.onClose = null;
       setWebRTCSignalHandler(null);
     };
-  }, [call.peerId, client, playRemoteStream]);
+  }, [playRemoteStream]);
+
+  // Wire onSignal separately so it has the latest peerId
+  useEffect(() => {
+    rtcRef.current.onSignal = (data) => {
+      const targetId = activePeerIdRef.current;
+      if (targetId) {
+        client?.send({
+          type: "WEBRTC_SIGNAL",
+          target_user_id: targetId,
+          signal: data,
+        });
+      }
+    };
+  }, [client]);
 
   const handleStartCall = useCallback(
     async (targetUserId: string) => {
+      // Guard: don't start if already in a call with this user
+      if (activePeerIdRef.current === targetUserId) {
+        console.log("[webrtc] Already in call with", targetUserId);
+        return;
+      }
       const stream = await requestMicrophone();
-      // Start muted — PTT unmutes
       stream.getAudioTracks().forEach((t) => { t.enabled = false; });
+      activePeerIdRef.current = targetUserId;
       callUser(targetUserId);
       rtcRef.current.createPeer(true, stream);
     },
@@ -91,9 +91,14 @@ export const useWebRTC = () => {
 
   const handleAcceptCall = useCallback(
     async (fromUserId: string, roomCode: string) => {
+      // Guard: don't accept if already in a call with this user
+      if (activePeerIdRef.current === fromUserId) {
+        console.log("[webrtc] Already accepted call from", fromUserId);
+        return;
+      }
       const stream = await requestMicrophone();
-      // Start muted — PTT unmutes
       stream.getAudioTracks().forEach((t) => { t.enabled = false; });
+      activePeerIdRef.current = fromUserId;
       acceptCall(fromUserId, roomCode);
       rtcRef.current.createPeer(false, stream);
     },
