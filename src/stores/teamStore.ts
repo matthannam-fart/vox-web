@@ -119,14 +119,14 @@ export const useTeamStore = create<TeamState>((set, get) => ({
     const teamData = teams[0];
 
     // Check if already a member
-    const { data: existing } = await supabase
+    const { data: existingMember } = await supabase
       .from("team_members")
       .select("user_id")
       .eq("team_id", teamData.id)
       .eq("user_id", userId)
       .maybeSingle();
 
-    if (!existing) {
+    if (!existingMember) {
       const { error: joinError } = await supabase
         .from("team_members")
         .insert({ team_id: teamData.id, user_id: userId, role: "member" });
