@@ -113,13 +113,20 @@ export const useAudio = () => {
     }
 
     audio.play().catch((err) => {
-      console.warn("[audio] autoplay blocked, will retry on click:", err);
+      console.warn("[audio] autoplay blocked, will retry on next user interaction:", err);
+      // Browsers block audio playback on tabs without recent user interaction.
+      // Retry on any gesture — click, key (e.g. spacebar PTT), or touch — so
+      // the receiver hears audio as soon as they interact with the page.
+      const events = ["click", "keydown", "pointerdown", "touchstart"] as const;
       const retry = () => {
-        audio.play().then(() => {
-          document.removeEventListener("click", retry);
-        }).catch(() => {});
+        audio.play()
+          .then(() => {
+            console.log("[audio] autoplay unblocked");
+            events.forEach((ev) => document.removeEventListener(ev, retry));
+          })
+          .catch(() => {});
       };
-      document.addEventListener("click", retry);
+      events.forEach((ev) => document.addEventListener(ev, retry));
     });
 
     // Monitor speaker level
