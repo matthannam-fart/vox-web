@@ -30,7 +30,7 @@ jobs:
       - run: npm run build
         env:
           # Base path for GitHub Pages (repo name)
-          VITE_BASE_PATH: /vox-web/
+          VITE_BASE_PATH: /
 
       - uses: actions/configure-pages@v5
 
