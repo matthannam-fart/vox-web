@@ -304,9 +304,19 @@ export const SettingsPage = ({ onNavigate }: SettingsPageProps) => {
           </button>
         </div>
 
-        {/* Version */}
+        {/* Help link + version */}
+        <p className="text-[10px] text-center mt-4" style={{ color: DARK.TEXT_FAINT }}>
+          <a
+            href="/manual.html"
+            target="_blank"
+            rel="noopener"
+            style={{ color: DARK.TEAL, textDecoration: "none" }}
+          >
+            How Vox works
+          </a>
+        </p>
         <p
-          className="text-[9px] text-center mt-4"
+          className="text-[9px] text-center mt-1"
           style={{ color: DARK.TEXT_FAINT }}
         >
           Vox · {APP_VERSION}

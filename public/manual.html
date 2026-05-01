@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#1e1e1e" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>Vox · How it works</title>
+    <style>
+      :root {
+        --bg: #1e1e1e;
+        --bg-raised: #2a2a2a;
+        --border: #3a3a3a;
+        --text: #e8e8e8;
+        --text-dim: #a0a0a0;
+        --text-faint: #6c6c6c;
+        --accent: #00a651;
+        --teal: #2d9eb8;
+      }
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+        font-size: 15px;
+        line-height: 1.55;
+      }
+      .wrap {
+        max-width: 680px;
+        margin: 0 auto;
+        padding: 40px 24px 80px;
+      }
+      header {
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 24px;
+        margin-bottom: 32px;
+      }
+      h1 {
+        font-size: 28px;
+        font-weight: 700;
+        margin: 0 0 8px;
+      }
+      .subtitle {
+        color: var(--text-dim);
+        margin: 0;
+      }
+      h2 {
+        font-size: 18px;
+        font-weight: 600;
+        margin: 36px 0 12px;
+        color: var(--text);
+      }
+      h3 {
+        font-size: 14px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1.2px;
+        color: var(--text-faint);
+        margin: 24px 0 8px;
+      }
+      p { margin: 0 0 12px; }
+      ol, ul { padding-left: 22px; margin: 0 0 16px; }
+      li { margin-bottom: 6px; }
+      kbd {
+        display: inline-block;
+        padding: 2px 7px;
+        background: var(--bg-raised);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        font-family: ui-monospace, SFMono-Regular, monospace;
+        font-size: 12px;
+        color: var(--text);
+      }
+      code {
+        font-family: ui-monospace, SFMono-Regular, monospace;
+        font-size: 13px;
+        background: var(--bg-raised);
+        padding: 1px 5px;
+        border-radius: 3px;
+        color: var(--text);
+      }
+      .pill {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-right: 4px;
+      }
+      .pill-green { background: rgba(0, 166, 81, 0.15); color: #4ed68a; }
+      .pill-yellow { background: rgba(245, 184, 0, 0.15); color: #f5b800; }
+      .pill-red { background: rgba(229, 57, 53, 0.15); color: #ff7a75; }
+      a {
+        color: var(--teal);
+        text-decoration: none;
+      }
+      a:hover { text-decoration: underline; }
+      .back {
+        display: inline-block;
+        margin-top: 40px;
+        padding: 8px 14px;
+        background: var(--bg-raised);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--text);
+      }
+      hr {
+        border: none;
+        border-top: 1px solid var(--border);
+        margin: 32px 0;
+      }
+      .note {
+        background: var(--bg-raised);
+        border: 1px solid var(--border);
+        border-left: 3px solid var(--teal);
+        padding: 12px 16px;
+        border-radius: 6px;
+        font-size: 14px;
+        color: var(--text-dim);
+        margin: 16px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <h1>Vox</h1>
+        <p class="subtitle">A push-to-talk intercom for your team. Click someone, hold spacebar, talk.</p>
+      </header>
+
+      <h2>Getting started</h2>
+      <ol>
+        <li>Open <a href="/">app.getvox.net</a> and sign in with email or Google.</li>
+        <li>Pick a team to join — paste an invite code, or create your own from the Welcome screen.</li>
+        <li>Allow microphone access when your browser asks. Without it, you can't talk.</li>
+      </ol>
+      <div class="note">
+        <strong>First call?</strong> The other person needs to be online too — green dot next to their name. If they're not online, they can't hear you.
+      </div>
+
+      <h2>Making a call</h2>
+      <ol>
+        <li>Click anyone in your team list. The call connects in about a second.</li>
+        <li>Hold <kbd>Space</kbd> to talk. Release to mute. (You can also hold the on-screen PTT button.)</li>
+        <li>Click <strong>End</strong> on the call banner when you're done.</li>
+      </ol>
+      <p>Calls are intercom-style — when you click someone, you go straight through. No ringing, no answer button. If someone calls you, your mic stays muted until you hold spacebar.</p>
+
+      <h2>Status modes</h2>
+      <p>Set your status from <strong>Settings → Status</strong>:</p>
+      <ul>
+        <li><span class="pill pill-green">Available</span>You can be called and you can call others.</li>
+        <li><span class="pill pill-yellow">Busy</span>Visible to your team but signaling you're heads-down.</li>
+        <li><span class="pill pill-red">DND</span>Do not disturb — calls won't connect to you.</li>
+      </ul>
+
+      <h2>Settings</h2>
+      <h3>Display name</h3>
+      <p>What shows up in your team's user list. Changes save to your profile and update for everyone instantly.</p>
+
+      <h3>Audio devices</h3>
+      <p>Pick a specific microphone or speaker. Useful if you have a headset and want it routed there instead of the laptop mic. (Speaker selection only works in Chrome and Edge.)</p>
+
+      <h3>Team</h3>
+      <p>Copy your team's invite code and share it with new members. They paste it on the Welcome screen to join. Admins can create new teams; members can leave.</p>
+
+      <h2>Install as a desktop app</h2>
+      <p>Vox runs as a Progressive Web App — you can install it like a native app:</p>
+      <ul>
+        <li><strong>Chrome / Edge:</strong> click the install icon in the URL bar (looks like a small monitor with a down-arrow), or open the menu and choose "Install Vox…"</li>
+        <li><strong>Safari (iOS / iPadOS):</strong> tap the share button, then "Add to Home Screen."</li>
+      </ul>
+      <p>Once installed, Vox lives in your <code>/Applications</code> folder (or home screen) and runs in its own window without browser chrome.</p>
+
+      <h2>Keyboard shortcuts</h2>
+      <ul>
+        <li><kbd>Space</kbd> — push to talk (only when you have someone selected)</li>
+        <li><kbd>Esc</kbd> — close dialogs</li>
+      </ul>
+
+      <h2>Troubleshooting</h2>
+      <h3>Other users don't appear in my list</h3>
+      <p>You're probably on different teams. Check that you're both on the same team — the active team name shows at the top of the user list. Use the team picker to switch.</p>
+
+      <h3>Status bar shows "Disconnected"</h3>
+      <p>Network blip — the app reconnects automatically. If it doesn't recover within ~30 seconds, refresh the tab.</p>
+
+      <h3>I can hear them but they can't hear me</h3>
+      <p>Your mic isn't selected or permission was denied. Check <strong>Settings → Audio → Input Device</strong> and make sure the right mic is picked. If the dropdown is empty, your browser may have blocked microphone access — re-grant it via the URL bar's lock icon.</p>
+
+      <h3>Calls drop after a few seconds</h3>
+      <p>Likely a firewall or VPN blocking WebRTC. Try without the VPN, or whitelist <code>relay.getvox.net</code>.</p>
+
+      <h3>I closed my browser and now I can't log back in</h3>
+      <p>Sign-in uses Supabase magic links and Google OAuth. Check your email for the magic link, or try again with a different browser to rule out a cookie issue.</p>
+
+      <hr />
+
+      <p style="color: var(--text-faint); font-size: 13px;">
+        Found a bug or want a feature? Open an issue at <a href="https://github.com/matthannam-fart/vox-web/issues">github.com/matthannam-fart/vox-web/issues</a>.
+      </p>
+
+      <a href="/" class="back">← Back to Vox</a>
+    </div>
+  </body>
+</html>
