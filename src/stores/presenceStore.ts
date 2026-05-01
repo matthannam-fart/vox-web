@@ -10,6 +10,17 @@ export const setWebRTCSignalHandler = (handler: WebRTCSignalCallback | null) => 
   _onWebRTCSignal = handler;
 };
 
+// Callback for tearing down WebRTC + audio when the peer ends the call.
+// useWebRTC registers this so inbound CALL_ENDED triggers full local cleanup
+// (peer destroy, mic stop, audio element removal) — store-only state changes
+// would leave the WebRTC manager + mic stream orphaned.
+type RemoteEndCallback = () => void;
+let _onRemoteEndCall: RemoteEndCallback | null = null;
+
+export const setRemoteEndCallHandler = (handler: RemoteEndCallback | null) => {
+  _onRemoteEndCall = handler;
+};
+
 interface PresenceState {
   // Connection
   connected: boolean;
@@ -80,6 +91,14 @@ export const usePresenceStore = create<PresenceState>((set, get) => ({
               call: { status: "idle", peerId: null, peerName: null, roomCode: null },
             });
             break;
+          case "CALL_ENDED":
+            // Peer hung up. Run the same local teardown as if we ended the
+            // call ourselves, but skip sending CALL_END back (avoid bounce).
+            _onRemoteEndCall?.();
+            set({
+              call: { status: "idle", peerId: null, peerName: null, roomCode: null },
+            });
+            break;
           case "WEBRTC_SIGNAL":
             _onWebRTCSignal?.(msg.signal);
             break;
@@ -144,7 +163,13 @@ export const usePresenceStore = create<PresenceState>((set, get) => ({
   },
 
   endCall: () => {
-    // TODO: Close WebRTC peer connection (Phase 3)
+    // Tell the peer the call ended so they can tear down their side.
+    // Covers: live-call hangup, outgoing-ring cancel, and connecting-state abort.
+    // Idle has no peer to notify.
+    const current = get().call;
+    if (current.peerId && current.status !== "idle") {
+      get().client?.send({ type: "CALL_END", target_user_id: current.peerId });
+    }
     set({
       call: { status: "idle", peerId: null, peerName: null, roomCode: null },
     });

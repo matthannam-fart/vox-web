@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef } from "react";
 import { WebRTCManager } from "../lib/webrtc";
-import { usePresenceStore, setWebRTCSignalHandler } from "../stores/presenceStore";
+import {
+  usePresenceStore,
+  setWebRTCSignalHandler,
+  setRemoteEndCallHandler,
+} from "../stores/presenceStore";
 import { useAudio } from "./useAudio";
 
 export const useWebRTC = () => {
@@ -25,7 +29,10 @@ export const useWebRTC = () => {
   const { call, client, callUser, acceptCall, declineCall, markCallConnected, endCall } =
     usePresenceStore();
 
-  const handleEndCall = useCallback(() => {
+  // Local cleanup of WebRTC + audio. Used by both user-initiated hangup
+  // (handleEndCall, which also calls store.endCall to send CALL_END) and
+  // remote hangup (CALL_ENDED handler, which clears store state itself).
+  const teardownLocal = useCallback(() => {
     activePeerIdRef.current = null;
     pendingInitiatorStreamRef.current = null;
     rtcRef.current.destroy();
@@ -36,8 +43,12 @@ export const useWebRTC = () => {
       audioRef.current.remove();
       audioRef.current = null;
     }
+  }, [stopMicrophone]);
+
+  const handleEndCall = useCallback(() => {
+    teardownLocal();
     endCall();
-  }, [stopMicrophone, endCall]);
+  }, [teardownLocal, endCall]);
 
   // Wire up WEBRTC_SIGNAL handling from presence store (one-time setup)
   useEffect(() => {
@@ -61,13 +72,18 @@ export const useWebRTC = () => {
       rtc.signal(signal);
     });
 
+    setRemoteEndCallHandler(() => {
+      teardownLocal();
+    });
+
     return () => {
       rtc.onStream = null;
       rtc.onConnect = null;
       rtc.onClose = null;
       setWebRTCSignalHandler(null);
+      setRemoteEndCallHandler(null);
     };
-  }, [playRemoteStream, markCallConnected]);
+  }, [playRemoteStream, markCallConnected, teardownLocal]);
 
   // Wire onSignal separately so it has the latest peerId
   useEffect(() => {
