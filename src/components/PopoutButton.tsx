@@ -1,29 +1,25 @@
 import { useEffect } from "react";
 import { DARK } from "../lib/theme";
-import { useIsMobile } from "../lib/useMediaQuery";
+import { useIsMobile, useIsStandalone } from "../lib/useMediaQuery";
 
 const POPOUT_WIDTH = 340;
 const POPOUT_HEIGHT = 640;
 
-const detectCompactMode = () => {
+const isPopoutQuery = () => {
   if (typeof window === "undefined") return false;
-  const params = new URLSearchParams(window.location.search);
-  const isPopoutQuery = params.get("popout") === "1";
-  const isStandalone =
-    window.matchMedia("(display-mode: standalone)").matches ||
-    window.matchMedia("(display-mode: minimal-ui)").matches ||
-    // iOS Safari
-    (window.navigator as unknown as { standalone?: boolean }).standalone === true;
-  return isPopoutQuery || isStandalone;
+  return new URLSearchParams(window.location.search).get("popout") === "1";
 };
 
 export const PopoutButton = () => {
-  const isCompact = detectCompactMode();
+  const isStandalone = useIsStandalone();
   const isMobile = useIsMobile();
+  const isCompact = isStandalone || isPopoutQuery();
 
   useEffect(() => {
     if (!isCompact) return;
-    // Try to resize — works in popout windows and most installed PWAs
+    // Try to resize — works in popout windows and most installed PWAs.
+    // Browsers may ignore this for installed PWAs, but the layout fills
+    // whatever size the user makes the window anyway.
     try {
       window.resizeTo(POPOUT_WIDTH, POPOUT_HEIGHT);
     } catch {
