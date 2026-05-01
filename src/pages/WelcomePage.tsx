@@ -197,6 +197,19 @@ export const WelcomePage = ({ onNavigate }: WelcomePageProps) => {
         </p>
       )}
 
+      {/* Help link */}
+      <p className="text-[10px] text-center mt-3" style={{ color: DARK.TEXT_FAINT }}>
+        New here?{" "}
+        <a
+          href="/manual.html"
+          target="_blank"
+          rel="noopener"
+          style={{ color: DARK.TEAL, textDecoration: "none" }}
+        >
+          How Vox works →
+        </a>
+      </p>
+
       {showCreateDialog && (
         <CreateTeamDialog
           onClose={() => setShowCreateDialog(false)}
