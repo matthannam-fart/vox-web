@@ -18,10 +18,10 @@ interface AuthState {
   signInWithGoogle: () => Promise<{ error?: string }>;
   signInWithMagicLink: (email: string) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
-  setDisplayName: (name: string) => void;
+  setDisplayName: (name: string) => Promise<{ error?: string }>;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   userId: null,
   email: null,
   displayName: "",
@@ -133,5 +133,23 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ userId: null, email: null, profile: null, displayName: "" });
   },
 
-  setDisplayName: (name) => set({ displayName: name }),
+  setDisplayName: async (name) => {
+    const trimmed = name.trim();
+    const userId = get().userId;
+    if (!trimmed || !userId) return { error: "Not signed in" };
+
+    const { data, error } = await supabase
+      .from("profiles")
+      .update({ display_name: trimmed })
+      .eq("id", userId)
+      .select()
+      .single();
+
+    if (error) return { error: error.message };
+
+    // Updating displayName in state triggers App's presence reconnect with the
+    // new name (see App.tsx — connect() is keyed on displayName).
+    set({ displayName: trimmed, profile: data ?? get().profile });
+    return {};
+  },
 }));

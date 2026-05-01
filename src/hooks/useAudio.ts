@@ -1,4 +1,10 @@
 import { useCallback, useRef, useState } from "react";
+import { useSettingsStore } from "../stores/settingsStore";
+
+// HTMLMediaElement.setSinkId is not in lib.dom yet for all targets — narrow type.
+type AudioElementWithSink = HTMLAudioElement & {
+  setSinkId?: (sinkId: string) => Promise<void>;
+};
 
 export const useAudio = () => {
   const [micStream, setMicStream] = useState<MediaStream | null>(null);
@@ -14,12 +20,17 @@ export const useAudio = () => {
     if (micStreamRef.current) {
       return micStreamRef.current;
     }
+    const selectedInput = useSettingsStore.getState().selectedInputDevice;
+    const audioConstraints: MediaTrackConstraints = {
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true,
+    };
+    if (selectedInput) {
+      audioConstraints.deviceId = { exact: selectedInput };
+    }
     const stream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
-      },
+      audio: audioConstraints,
     });
     micStreamRef.current = stream;
     setMicStream(stream);
@@ -85,13 +96,22 @@ export const useAudio = () => {
   }, []);
 
   const playRemoteStream = useCallback((stream: MediaStream) => {
-    const audio = document.createElement("audio");
+    const audio = document.createElement("audio") as AudioElementWithSink;
     audio.srcObject = stream;
     audio.autoplay = true;
     audio.setAttribute("playsinline", "true");
     audio.muted = false;
     audio.volume = 1.0;
     document.body.appendChild(audio);
+
+    // Route to user-selected output device when supported (Chrome/Edge; not Safari/Firefox).
+    const selectedOutput = useSettingsStore.getState().selectedOutputDevice;
+    if (selectedOutput && typeof audio.setSinkId === "function") {
+      audio.setSinkId(selectedOutput).catch((err: unknown) => {
+        console.warn("[audio] setSinkId failed, falling back to default:", err);
+      });
+    }
+
     audio.play().catch((err) => {
       console.warn("[audio] autoplay blocked, will retry on click:", err);
       const retry = () => {

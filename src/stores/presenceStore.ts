@@ -33,6 +33,7 @@ interface PresenceState {
   callUser: (targetUserId: string) => void;
   acceptCall: (fromUserId: string, roomCode: string) => void;
   declineCall: (fromUserId: string) => void;
+  markCallConnected: () => void;
   endCall: () => void;
 }
 
@@ -133,6 +134,13 @@ export const usePresenceStore = create<PresenceState>((set, get) => ({
     set({
       call: { status: "idle", peerId: null, peerName: null, roomCode: null },
     });
+  },
+
+  markCallConnected: () => {
+    const current = get().call;
+    if (current.status === "connecting") {
+      set({ call: { ...current, status: "connected" } });
+    }
   },
 
   endCall: () => {

@@ -2,15 +2,15 @@ import { create } from "zustand";
 
 interface SettingsState {
   darkMode: boolean;
-  displayName: string;
   activeTeamId: string | null;
   activeTeamName: string | null;
-  incognito: boolean;
+  selectedInputDevice: string | null;
+  selectedOutputDevice: string | null;
 
   setDarkMode: (dark: boolean) => void;
-  setDisplayName: (name: string) => void;
   setActiveTeam: (teamId: string | null, teamName: string | null) => void;
-  setIncognito: (incognito: boolean) => void;
+  setSelectedInputDevice: (deviceId: string | null) => void;
+  setSelectedOutputDevice: (deviceId: string | null) => void;
 }
 
 const STORAGE_KEY = "vox-settings";
@@ -38,25 +38,25 @@ const persisted = loadPersistedState();
 
 export const useSettingsStore = create<SettingsState>((set) => ({
   darkMode: persisted.darkMode ?? true,
-  displayName: persisted.displayName ?? "",
   activeTeamId: persisted.activeTeamId ?? null,
   activeTeamName: persisted.activeTeamName ?? null,
-  incognito: persisted.incognito ?? false,
+  selectedInputDevice: persisted.selectedInputDevice ?? null,
+  selectedOutputDevice: persisted.selectedOutputDevice ?? null,
 
   setDarkMode: (dark) => {
     set({ darkMode: dark });
     persist({ darkMode: dark });
   },
-  setDisplayName: (name) => {
-    set({ displayName: name });
-    persist({ displayName: name });
-  },
   setActiveTeam: (teamId, teamName) => {
     set({ activeTeamId: teamId, activeTeamName: teamName });
     persist({ activeTeamId: teamId, activeTeamName: teamName });
   },
-  setIncognito: (incognito) => {
-    set({ incognito });
-    persist({ incognito });
+  setSelectedInputDevice: (deviceId) => {
+    set({ selectedInputDevice: deviceId });
+    persist({ selectedInputDevice: deviceId });
+  },
+  setSelectedOutputDevice: (deviceId) => {
+    set({ selectedOutputDevice: deviceId });
+    persist({ selectedOutputDevice: deviceId });
   },
 }));

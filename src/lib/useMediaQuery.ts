@@ -1,19 +1,24 @@
-import { useEffect, useState } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 
 export const useMediaQuery = (query: string): boolean => {
-  const get = () =>
-    typeof window !== "undefined" && window.matchMedia(query).matches;
-  const [matches, setMatches] = useState(get);
+  const subscribe = useCallback(
+    (notify: () => void) => {
+      if (typeof window === "undefined") return () => {};
+      const mql = window.matchMedia(query);
+      mql.addEventListener("change", notify);
+      return () => mql.removeEventListener("change", notify);
+    },
+    [query],
+  );
 
-  useEffect(() => {
-    const mql = window.matchMedia(query);
-    const onChange = () => setMatches(mql.matches);
-    mql.addEventListener("change", onChange);
-    setMatches(mql.matches);
-    return () => mql.removeEventListener("change", onChange);
-  }, [query]);
+  const getSnapshot = useCallback(
+    () => typeof window !== "undefined" && window.matchMedia(query).matches,
+    [query],
+  );
 
-  return matches;
+  const getServerSnapshot = () => false;
+
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 };
 
 export const useIsMobile = () => useMediaQuery("(max-width: 600px)");

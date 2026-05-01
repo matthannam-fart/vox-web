@@ -14,19 +14,31 @@ interface SettingsPageProps {
 const APP_VERSION = (import.meta.env.VITE_APP_VERSION as string | undefined) ?? "dev";
 
 export const SettingsPage = ({ onNavigate }: SettingsPageProps) => {
-  const { userId, email, displayName: authDisplayName, signOut } = useAuthStore();
-  const { darkMode, setDarkMode, incognito, setIncognito, displayName, setDisplayName, activeTeamId } =
-    useSettingsStore();
+  const { userId, email, displayName, setDisplayName, signOut } = useAuthStore();
+  const {
+    darkMode,
+    setDarkMode,
+    activeTeamId,
+    selectedInputDevice,
+    selectedOutputDevice,
+    setSelectedInputDevice,
+    setSelectedOutputDevice,
+  } = useSettingsStore();
   const { mode, setMode } = usePresenceStore();
   const { teams, leaveTeam } = useTeamStore();
 
   const activeTeam = teams.find((t) => t.id === activeTeamId);
 
-  const [nameInput, setNameInput] = useState(displayName || authDisplayName);
+  const [nameInput, setNameInput] = useState(displayName);
+  const [nameStatus, setNameStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [nameError, setNameError] = useState<string | null>(null);
   const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
-  const [selectedInput, setSelectedInput] = useState("");
-  const [selectedOutput, setSelectedOutput] = useState("");
   const [copiedField, setCopiedField] = useState<"code" | "invite" | null>(null);
+
+  // Keep input in sync if displayName changes from elsewhere (e.g. auth refresh).
+  useEffect(() => {
+    setNameInput(displayName);
+  }, [displayName]);
 
   useEffect(() => {
     navigator.mediaDevices.enumerateDevices().then((devices) => {
@@ -65,9 +77,18 @@ export const SettingsPage = ({ onNavigate }: SettingsPageProps) => {
   const inputDevices = audioDevices.filter((d) => d.kind === "audioinput");
   const outputDevices = audioDevices.filter((d) => d.kind === "audiooutput");
 
-  const handleNameSave = () => {
-    if (nameInput.trim()) {
-      setDisplayName(nameInput.trim());
+  const handleNameSave = async () => {
+    const trimmed = nameInput.trim();
+    if (!trimmed || trimmed === displayName) return;
+    setNameStatus("saving");
+    setNameError(null);
+    const { error } = await setDisplayName(trimmed);
+    if (error) {
+      setNameStatus("error");
+      setNameError(error);
+    } else {
+      setNameStatus("saved");
+      setTimeout(() => setNameStatus((s) => (s === "saved" ? "idle" : s)), 1500);
     }
   };
 
@@ -120,12 +141,18 @@ export const SettingsPage = ({ onNavigate }: SettingsPageProps) => {
             />
             <button
               onClick={handleNameSave}
-              className="rounded-[6px] px-3 py-[7px] text-[10px] font-semibold cursor-pointer"
+              disabled={nameStatus === "saving" || !nameInput.trim() || nameInput.trim() === displayName}
+              className="rounded-[6px] px-3 py-[7px] text-[10px] font-semibold cursor-pointer disabled:opacity-50"
               style={{ background: DARK.TEAL, color: "white", border: "none" }}
             >
-              Save
+              {nameStatus === "saving" ? "..." : nameStatus === "saved" ? "✓" : "Save"}
             </button>
           </div>
+          {nameError && (
+            <p className="text-[10px] mt-1" style={{ color: DARK.DANGER }}>
+              {nameError}
+            </p>
+          )}
           {email && (
             <p className="text-[10px] mt-1" style={{ color: DARK.TEXT_FAINT }}>
               {email}
@@ -210,9 +237,6 @@ export const SettingsPage = ({ onNavigate }: SettingsPageProps) => {
         <SettingRow label="Dark Mode">
           <ToggleSwitch on={darkMode} onToggle={setDarkMode} />
         </SettingRow>
-        <SettingRow label="Incognito">
-          <ToggleSwitch on={incognito} onToggle={setIncognito} />
-        </SettingRow>
 
         {/* Audio */}
         <SectionHeader>Audio</SectionHeader>
@@ -222,8 +246,8 @@ export const SettingsPage = ({ onNavigate }: SettingsPageProps) => {
               Input Device
             </label>
             <select
-              value={selectedInput}
-              onChange={(e) => setSelectedInput(e.target.value)}
+              value={selectedInputDevice ?? ""}
+              onChange={(e) => setSelectedInputDevice(e.target.value || null)}
               className="w-full rounded-[6px] px-2 py-[6px] text-[11px] outline-none"
               style={{
                 background: DARK.BG_RAISED,
@@ -246,8 +270,8 @@ export const SettingsPage = ({ onNavigate }: SettingsPageProps) => {
               Output Device
             </label>
             <select
-              value={selectedOutput}
-              onChange={(e) => setSelectedOutput(e.target.value)}
+              value={selectedOutputDevice ?? ""}
+              onChange={(e) => setSelectedOutputDevice(e.target.value || null)}
               className="w-full rounded-[6px] px-2 py-[6px] text-[11px] outline-none"
               style={{
                 background: DARK.BG_RAISED,
