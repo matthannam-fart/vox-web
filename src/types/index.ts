@@ -63,6 +63,7 @@ export type PresenceOutMessage =
   | { type: "CALL_REQUEST"; target_user_id: string }
   | { type: "CALL_ACCEPT"; target_user_id: string; room_code: string }
   | { type: "CALL_DECLINE"; target_user_id: string }
+  | { type: "CALL_END"; target_user_id: string }
   | { type: "WEBRTC_SIGNAL"; target_user_id: string; signal: unknown };
 
 /** Messages received FROM the relay server */
@@ -73,6 +74,7 @@ export type PresenceInMessage =
   | { type: "INCOMING_CALL"; from_user_id: string; from_name: string }
   | { type: "CALL_ACCEPTED"; from_user_id: string; room_code: string }
   | { type: "CALL_DECLINED"; from_user_id: string }
+  | { type: "CALL_ENDED"; from_user_id: string }
   | { type: "WEBRTC_SIGNAL"; from_user_id: string; signal: unknown }
   | { type: "ERROR"; message: string };
 
