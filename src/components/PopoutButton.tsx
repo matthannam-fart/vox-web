@@ -1,33 +1,35 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { DARK } from "../lib/theme";
 import { useIsMobile } from "../lib/useMediaQuery";
 
 const POPOUT_WIDTH = 340;
 const POPOUT_HEIGHT = 640;
 
+const detectCompactMode = () => {
+  if (typeof window === "undefined") return false;
+  const params = new URLSearchParams(window.location.search);
+  const isPopoutQuery = params.get("popout") === "1";
+  const isStandalone =
+    window.matchMedia("(display-mode: standalone)").matches ||
+    window.matchMedia("(display-mode: minimal-ui)").matches ||
+    // iOS Safari
+    (window.navigator as unknown as { standalone?: boolean }).standalone === true;
+  return isPopoutQuery || isStandalone;
+};
+
 export const PopoutButton = () => {
-  const [isCompact, setIsCompact] = useState(false);
+  const isCompact = detectCompactMode();
   const isMobile = useIsMobile();
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const isPopoutQuery = params.get("popout") === "1";
-    const isStandalone =
-      window.matchMedia("(display-mode: standalone)").matches ||
-      window.matchMedia("(display-mode: minimal-ui)").matches ||
-      // iOS Safari
-      (window.navigator as unknown as { standalone?: boolean }).standalone === true;
-
-    if (isPopoutQuery || isStandalone) {
-      setIsCompact(true);
-      // Try to resize — works in popout windows and most installed PWAs
-      try {
-        window.resizeTo(POPOUT_WIDTH, POPOUT_HEIGHT);
-      } catch {
-        // ignore
-      }
+    if (!isCompact) return;
+    // Try to resize — works in popout windows and most installed PWAs
+    try {
+      window.resizeTo(POPOUT_WIDTH, POPOUT_HEIGHT);
+    } catch {
+      // ignore
     }
-  }, []);
+  }, [isCompact]);
 
   // Pop-out windows are desktop-only — `window.open` with sizing isn't honored on mobile.
   if (isCompact || isMobile) return null;
