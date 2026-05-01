@@ -80,4 +80,8 @@ export class WebRTCManager {
   get connected(): boolean {
     return this.peer?.connected ?? false;
   }
+
+  get hasPeer(): boolean {
+    return this.peer !== null && !this.peer.destroyed;
+  }
 }

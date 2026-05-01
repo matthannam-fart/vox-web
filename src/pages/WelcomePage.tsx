@@ -21,6 +21,20 @@ export const WelcomePage = ({ onNavigate }: WelcomePageProps) => {
     if (userId) loadMyTeams(userId);
   }, [userId, loadMyTeams]);
 
+  // Pre-fill invite code from `?code=…` so beta-tester invite links land in the box.
+  // Also restore from sessionStorage in case the user signed in via OAuth/magic-link
+  // (which strips query params during the auth round-trip).
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const fromUrl = params.get("code");
+    const fromStorage = sessionStorage.getItem("vox-pending-invite");
+    const code = fromUrl ?? fromStorage;
+    if (code) {
+      setInviteCode(code.toUpperCase().slice(0, 10));
+      sessionStorage.removeItem("vox-pending-invite");
+    }
+  }, []);
+
   const handleSelectTeam = (teamId: string, teamName: string) => {
     setActiveTeam(teamId, teamName);
     onNavigate("users");
