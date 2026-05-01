@@ -8,6 +8,10 @@ export const useWebRTC = () => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   // Track which peer ID we currently have an active WebRTC connection with
   const activePeerIdRef = useRef<string | null>(null);
+  // Stream queued by the initiator while waiting for CALL_ACCEPTED — peer is
+  // created once the receiver has accepted, to avoid an offer arriving before
+  // the receiver's peer exists (which would silently drop the offer).
+  const pendingInitiatorStreamRef = useRef<MediaStream | null>(null);
   const {
     micLevel,
     speakerLevel,
@@ -23,6 +27,7 @@ export const useWebRTC = () => {
 
   const handleEndCall = useCallback(() => {
     activePeerIdRef.current = null;
+    pendingInitiatorStreamRef.current = null;
     rtcRef.current.destroy();
     stopMicrophone();
     if (audioRef.current) {
@@ -83,11 +88,28 @@ export const useWebRTC = () => {
       const stream = await requestMicrophone();
       stream.getAudioTracks().forEach((t) => { t.enabled = false; });
       activePeerIdRef.current = targetUserId;
+      // Stash the stream — peer is created once CALL_ACCEPTED flips status to
+      // "connecting" (see effect below). Creating it here would race the
+      // receiver's peer setup and lose the offer.
+      pendingInitiatorStreamRef.current = stream;
       callUser(targetUserId);
-      rtcRef.current.createPeer(true, stream);
     },
     [requestMicrophone, callUser],
   );
+
+  // Initiator: create peer once the receiver has accepted.
+  useEffect(() => {
+    if (
+      call.status === "connecting" &&
+      pendingInitiatorStreamRef.current &&
+      !rtcRef.current.hasPeer
+    ) {
+      const stream = pendingInitiatorStreamRef.current;
+      pendingInitiatorStreamRef.current = null;
+      console.log("[webrtc] CALL_ACCEPTED — creating initiator peer");
+      rtcRef.current.createPeer(true, stream);
+    }
+  }, [call.status]);
 
   const handleAcceptCall = useCallback(
     async (fromUserId: string, roomCode: string) => {

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useAuthStore } from "./stores/authStore";
 import { useSettingsStore } from "./stores/settingsStore";
 import { usePresenceStore } from "./stores/presenceStore";
+import { useTeamStore } from "./stores/teamStore";
 import { LoginPage } from "./pages/LoginPage";
 import { WelcomePage } from "./pages/WelcomePage";
 import { TeamsPage } from "./pages/TeamsPage";
@@ -11,6 +12,7 @@ import { RadioPage } from "./pages/RadioPage";
 import { Layout, type Page } from "./components/Layout";
 import { InstallPrompt } from "./components/InstallPrompt";
 import { PopoutButton } from "./components/PopoutButton";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { DARK } from "./lib/theme";
 
 export const App = () => {
@@ -18,6 +20,7 @@ export const App = () => {
   const { activeTeamId, displayName: settingsDisplayName } = useSettingsStore();
   const displayName = authDisplayName || settingsDisplayName || email || "";
   const { connect, disconnect, mode } = usePresenceStore();
+  const { loadMyTeams } = useTeamStore();
 
   // Derive page from auth/team state instead of using an effect
   const defaultPage: Page = userId && activeTeamId ? "users" : "welcome";
@@ -32,6 +35,11 @@ export const App = () => {
   useEffect(() => {
     initialize();
   }, [initialize]);
+
+  // Load teams once we have a user, so Settings (and any returning-user landing) has invite codes available.
+  useEffect(() => {
+    if (userId) loadMyTeams(userId);
+  }, [userId, loadMyTeams]);
 
   // Connect/disconnect presence when team changes
   useEffect(() => {
@@ -81,13 +89,13 @@ export const App = () => {
   };
 
   return (
-    <>
+    <ErrorBoundary>
       <Layout page={page} onNavigate={setPage} showSidebar={showSidebar}>
         {renderPage()}
       </Layout>
       <PopoutButton />
       <InstallPrompt />
-    </>
+    </ErrorBoundary>
   );
 };
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useAuthStore } from "../stores/authStore";
 import { useSettingsStore } from "../stores/settingsStore";
 import { usePresenceStore } from "../stores/presenceStore";
+import { useTeamStore } from "../stores/teamStore";
 import { ToggleSwitch } from "../components/ToggleSwitch";
 import { DARK, MODE_LABELS } from "../lib/theme";
 import type { Page } from "../components/Layout";
@@ -10,22 +11,56 @@ interface SettingsPageProps {
   onNavigate: (page: Page) => void;
 }
 
+const APP_VERSION = (import.meta.env.VITE_APP_VERSION as string | undefined) ?? "dev";
+
 export const SettingsPage = ({ onNavigate }: SettingsPageProps) => {
-  const { email, displayName: authDisplayName, signOut } = useAuthStore();
-  const { darkMode, setDarkMode, incognito, setIncognito, displayName, setDisplayName } =
+  const { userId, email, displayName: authDisplayName, signOut } = useAuthStore();
+  const { darkMode, setDarkMode, incognito, setIncognito, displayName, setDisplayName, activeTeamId } =
     useSettingsStore();
   const { mode, setMode } = usePresenceStore();
+  const { teams, leaveTeam } = useTeamStore();
+
+  const activeTeam = teams.find((t) => t.id === activeTeamId);
 
   const [nameInput, setNameInput] = useState(displayName || authDisplayName);
   const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedInput, setSelectedInput] = useState("");
   const [selectedOutput, setSelectedOutput] = useState("");
+  const [copiedField, setCopiedField] = useState<"code" | "invite" | null>(null);
 
   useEffect(() => {
     navigator.mediaDevices.enumerateDevices().then((devices) => {
       setAudioDevices(devices.filter((d) => d.kind === "audioinput" || d.kind === "audiooutput"));
     });
   }, []);
+
+  const flashCopied = (field: "code" | "invite") => {
+    setCopiedField(field);
+    setTimeout(() => setCopiedField((f) => (f === field ? null : f)), 1200);
+  };
+
+  const handleCopyCode = () => {
+    if (!activeTeam?.invite_code) return;
+    navigator.clipboard.writeText(activeTeam.invite_code);
+    flashCopied("code");
+  };
+
+  const handleCopyInvite = () => {
+    if (!activeTeam) return;
+    const url = `${window.location.origin}${import.meta.env.BASE_URL}?code=${activeTeam.invite_code}`;
+    const message = `Join me on Vox!\n\nTeam: ${activeTeam.name}\nCode: ${activeTeam.invite_code}\n\nOpen: ${url}`;
+    navigator.clipboard.writeText(message);
+    flashCopied("invite");
+  };
+
+  const handleLeaveTeam = async () => {
+    if (!activeTeam || !userId) return;
+    if (!confirm(`Leave "${activeTeam.name}"? You can rejoin with the invite code.`)) return;
+    await leaveTeam(activeTeam.id, userId);
+    // Returning to welcome happens automatically since activeTeamId is still set;
+    // clear it so the user sees the welcome flow again.
+    useSettingsStore.getState().setActiveTeam(null, null);
+  };
 
   const inputDevices = audioDevices.filter((d) => d.kind === "audioinput");
   const outputDevices = audioDevices.filter((d) => d.kind === "audiooutput");
@@ -117,6 +152,59 @@ export const SettingsPage = ({ onNavigate }: SettingsPageProps) => {
           ))}
         </div>
 
+        {/* Team */}
+        {activeTeam && (
+          <>
+            <SectionHeader>Team</SectionHeader>
+            <div className="mb-2">
+              <p
+                className="text-xs font-semibold mb-2"
+                style={{ color: DARK.TEXT }}
+              >
+                {activeTeam.name}
+              </p>
+              <label
+                className="block text-[9px] font-bold uppercase tracking-[1.5px] mb-1"
+                style={{ color: DARK.TEXT_FAINT }}
+              >
+                Invite Code
+              </label>
+              <div className="flex gap-2 mb-2">
+                <button
+                  onClick={handleCopyCode}
+                  className="flex-1 rounded-[6px] px-2.5 py-[7px] text-xs font-mono tracking-[2px] text-center cursor-pointer"
+                  style={{
+                    background: DARK.BG_RAISED,
+                    border: `1px solid ${DARK.BORDER}`,
+                    color: copiedField === "code" ? DARK.ACCENT_LT : DARK.TEXT,
+                  }}
+                  title="Click to copy"
+                >
+                  {copiedField === "code" ? "✓ Copied" : activeTeam.invite_code || "—"}
+                </button>
+                <button
+                  onClick={handleCopyInvite}
+                  disabled={!activeTeam.invite_code}
+                  className="rounded-[6px] px-3 py-[7px] text-[10px] font-semibold cursor-pointer disabled:opacity-50"
+                  style={{ background: DARK.TEAL, color: "white", border: "none" }}
+                  title="Copy a shareable invite message"
+                >
+                  {copiedField === "invite" ? "✓" : "Share"}
+                </button>
+              </div>
+              {activeTeam.role !== "admin" && (
+                <button
+                  onClick={handleLeaveTeam}
+                  className="text-[10px] font-medium cursor-pointer bg-transparent border-none"
+                  style={{ color: DARK.DANGER }}
+                >
+                  Leave team
+                </button>
+              )}
+            </div>
+          </>
+        )}
+
         {/* Appearance */}
         <SectionHeader>Appearance</SectionHeader>
         <SettingRow label="Dark Mode">
@@ -191,6 +279,14 @@ export const SettingsPage = ({ onNavigate }: SettingsPageProps) => {
             Sign Out
           </button>
         </div>
+
+        {/* Version */}
+        <p
+          className="text-[9px] text-center mt-4"
+          style={{ color: DARK.TEXT_FAINT }}
+        >
+          Vox · {APP_VERSION}
+        </p>
       </div>
     </div>
   );

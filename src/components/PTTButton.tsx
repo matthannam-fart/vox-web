@@ -28,19 +28,27 @@ export const PTTButton = ({ targetName, onPress, onRelease, disabled, isInCall }
     }
   }, [onRelease]);
 
-  // Spacebar PTT
+  // Spacebar PTT — but only when focus isn't in a text field, so users can type spaces.
   useEffect(() => {
+    const isEditableTarget = (target: EventTarget | null): boolean => {
+      if (!(target instanceof HTMLElement)) return false;
+      const tag = target.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
+      if (target.isContentEditable) return true;
+      return false;
+    };
+
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.code === "Space" && !e.repeat && !disabled) {
-        e.preventDefault();
-        handleDown();
-      }
+      if (e.code !== "Space" || e.repeat || disabled) return;
+      if (isEditableTarget(e.target)) return;
+      e.preventDefault();
+      handleDown();
     };
     const onKeyUp = (e: KeyboardEvent) => {
-      if (e.code === "Space") {
-        e.preventDefault();
-        handleUp();
-      }
+      if (e.code !== "Space") return;
+      if (isEditableTarget(e.target)) return;
+      e.preventDefault();
+      handleUp();
     };
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);

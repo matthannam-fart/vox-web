@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { DARK } from "../lib/theme";
+import { useIsMobile } from "../lib/useMediaQuery";
 
 const POPOUT_WIDTH = 340;
 const POPOUT_HEIGHT = 640;
 
 export const PopoutButton = () => {
   const [isCompact, setIsCompact] = useState(false);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -27,7 +29,8 @@ export const PopoutButton = () => {
     }
   }, []);
 
-  if (isCompact) return null;
+  // Pop-out windows are desktop-only — `window.open` with sizing isn't honored on mobile.
+  if (isCompact || isMobile) return null;
 
   const openPopout = () => {
     const url = `${window.location.origin}${window.location.pathname}?popout=1`;

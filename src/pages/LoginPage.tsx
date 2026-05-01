@@ -13,6 +13,13 @@ export const LoginPage = () => {
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
 
+  // Stash any incoming invite code so it survives the OAuth/magic-link round-trip.
+  // (Supabase strips our query params when it adds its own auth params on redirect.)
+  const stashInviteCode = () => {
+    const code = new URLSearchParams(window.location.search).get("code");
+    if (code) sessionStorage.setItem("vox-pending-invite", code);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -23,6 +30,7 @@ export const LoginPage = () => {
         setError("Please enter your name");
         return;
       }
+      stashInviteCode();
       const result = await signUp(email, password, displayName.trim());
       if (result.error) setError(result.error);
       else setInfo("Check your email to confirm your account.");
@@ -34,6 +42,7 @@ export const LoginPage = () => {
 
   const handleGoogle = async () => {
     setError("");
+    stashInviteCode();
     const result = await signInWithGoogle();
     if (result.error) setError(result.error);
   };
@@ -44,6 +53,7 @@ export const LoginPage = () => {
       setError("Enter your email first");
       return;
     }
+    stashInviteCode();
     const result = await signInWithMagicLink(email);
     if (result.error) setError(result.error);
     else setInfo("Check your email for a sign-in link.");

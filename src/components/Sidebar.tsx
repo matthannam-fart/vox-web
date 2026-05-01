@@ -13,7 +13,6 @@ interface SidebarProps {
 const NAV_ITEMS: { key: Page; icon: string; label: string }[] = [
   { key: "users", icon: "\u{1F465}", label: "TEAM" },
   { key: "teams", icon: "\u{1F4CB}", label: "TEAMS" },
-  { key: "radio", icon: "\u{1F4FB}", label: "RADIO" },
   { key: "settings", icon: "\u2699", label: "SET" },
 ];
 
