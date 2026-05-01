@@ -17,8 +17,8 @@ import { DARK } from "./lib/theme";
 
 export const App = () => {
   const { userId, displayName: authDisplayName, email, initialized, initialize } = useAuthStore();
-  const { activeTeamId, displayName: settingsDisplayName } = useSettingsStore();
-  const displayName = authDisplayName || settingsDisplayName || email || "";
+  const { activeTeamId } = useSettingsStore();
+  const displayName = authDisplayName || email || "";
   const { connect, disconnect, mode } = usePresenceStore();
   const { loadMyTeams } = useTeamStore();
 

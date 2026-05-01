@@ -22,7 +22,7 @@ export const useWebRTC = () => {
     unmuteMic,
   } = useAudio();
 
-  const { call, client, callUser, acceptCall, declineCall, endCall } =
+  const { call, client, callUser, acceptCall, declineCall, markCallConnected, endCall } =
     usePresenceStore();
 
   const handleEndCall = useCallback(() => {
@@ -47,6 +47,10 @@ export const useWebRTC = () => {
       audioRef.current = playRemoteStream(stream);
     };
 
+    rtc.onConnect = () => {
+      markCallConnected();
+    };
+
     // Only end call if peer closes unexpectedly (not when we replace it)
     rtc.onClose = () => {
       console.log("[webrtc] onClose fired, activePeerId:", activePeerIdRef.current);
@@ -59,10 +63,11 @@ export const useWebRTC = () => {
 
     return () => {
       rtc.onStream = null;
+      rtc.onConnect = null;
       rtc.onClose = null;
       setWebRTCSignalHandler(null);
     };
-  }, [playRemoteStream]);
+  }, [playRemoteStream, markCallConnected]);
 
   // Wire onSignal separately so it has the latest peerId
   useEffect(() => {
