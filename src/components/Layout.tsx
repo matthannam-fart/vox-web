@@ -1,7 +1,7 @@
 import { useSettingsStore } from "../stores/settingsStore";
 import { Sidebar } from "./Sidebar";
 import { DARK, LIGHT, PANEL_RADIUS } from "../lib/theme";
-import { useIsMobile } from "../lib/useMediaQuery";
+import { useIsMobile, useIsStandalone } from "../lib/useMediaQuery";
 
 export type Page = "welcome" | "users" | "teams" | "radio" | "settings";
 
@@ -16,9 +16,12 @@ export const Layout = ({ children, page, onNavigate, showSidebar = false }: Layo
   const { darkMode } = useSettingsStore();
   const theme = darkMode ? DARK : LIGHT;
   const isMobile = useIsMobile();
+  const isStandalone = useIsStandalone();
+  // In a phone viewport OR an installed PWA window, the app IS the canvas — fill it.
+  // Only in a regular desktop browser tab do we render as a centered fixed-width panel.
+  const fillViewport = isMobile || isStandalone;
 
-  // On phones: fill viewport, no border. On desktop: centered fixed-width panel.
-  const panelStyle = isMobile
+  const panelStyle = fillViewport
     ? {
         background: theme.BG,
         width: "100vw",
@@ -36,7 +39,7 @@ export const Layout = ({ children, page, onNavigate, showSidebar = false }: Layo
   return (
     <div
       className={
-        isMobile
+        fillViewport
           ? "min-h-screen flex"
           : "min-h-screen flex items-center justify-center"
       }
@@ -47,7 +50,7 @@ export const Layout = ({ children, page, onNavigate, showSidebar = false }: Layo
 
         <div
           className="flex-1 flex flex-col overflow-hidden"
-          style={isMobile ? undefined : { width: 260 }}
+          style={fillViewport ? undefined : { width: 260 }}
         >
           {children}
         </div>
