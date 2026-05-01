@@ -41,9 +41,42 @@ export const SettingsPage = ({ onNavigate }: SettingsPageProps) => {
   }, [displayName]);
 
   useEffect(() => {
-    navigator.mediaDevices.enumerateDevices().then((devices) => {
-      setAudioDevices(devices.filter((d) => d.kind === "audioinput" || d.kind === "audiooutput"));
-    });
+    let cancelled = false;
+
+    const refresh = () => {
+      navigator.mediaDevices.enumerateDevices().then((devices) => {
+        if (cancelled) return;
+        setAudioDevices(
+          devices.filter((d) => d.kind === "audioinput" || d.kind === "audiooutput"),
+        );
+      });
+    };
+
+    // Browsers strip device labels until mic permission is granted. Request a
+    // throwaway stream first so the dropdowns show real device names ("MacBook
+    // Pro Microphone (Built-in)") instead of placeholders ("Mic abc12345").
+    // If permission is denied, we still enumerate — labels will be empty but
+    // the user can pick by index.
+    const seedPermissionThenEnumerate = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        // Stop tracks immediately — we don't need the stream, just the
+        // permission grant so labels populate on the next enumerate.
+        stream.getTracks().forEach((t) => t.stop());
+      } catch {
+        // permission denied or no mic — fall through to enumerate anyway
+      }
+      refresh();
+    };
+
+    seedPermissionThenEnumerate();
+
+    // Refresh when the user plugs/unplugs a device.
+    navigator.mediaDevices.addEventListener("devicechange", refresh);
+    return () => {
+      cancelled = true;
+      navigator.mediaDevices.removeEventListener("devicechange", refresh);
+    };
   }, []);
 
   const flashCopied = (field: "code" | "invite") => {
