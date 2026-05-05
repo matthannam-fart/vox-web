@@ -169,7 +169,7 @@ export const WelcomePage = ({ onNavigate }: WelcomePageProps) => {
       <div className="flex gap-2 mb-2">
         <input
           type="text"
-          placeholder="VOX-XXXXX"
+          placeholder="VXABC12"
           maxLength={10}
           value={inviteCode}
           onChange={(e) => setInviteCode(formatCode(e.target.value))}

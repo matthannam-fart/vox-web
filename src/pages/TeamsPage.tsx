@@ -127,7 +127,7 @@ export const TeamsPage = ({ onNavigate }: TeamsPageProps) => {
         <div className="flex gap-2">
           <input
             type="text"
-            placeholder="VOX-XXXXX"
+            placeholder="VXABC12"
             maxLength={10}
             value={inviteCode}
             onChange={(e) => setInviteCode(formatCode(e.target.value))}
