@@ -3,6 +3,7 @@ import { usePresenceStore } from "../stores/presenceStore";
 import { useTeamStore } from "../stores/teamStore";
 import { useSettingsStore } from "../stores/settingsStore";
 import { useAuthStore } from "../stores/authStore";
+import { useVoicemailStore } from "../stores/voicemailStore";
 import { useWebRTC } from "../hooks/useWebRTC";
 import { useNotifications } from "../hooks/useNotifications";
 import { UserRow, type UserRowState } from "../components/UserRow";
@@ -12,6 +13,7 @@ import { OutgoingCallBanner } from "../components/OutgoingCallBanner";
 import { CallBanner } from "../components/CallBanner";
 import { DARK } from "../lib/theme";
 import { playIncomingCue, playConnectedCue, playEndedCue } from "../lib/audioCues";
+import { VoicemailRecorder } from "../lib/voicemailRecorder";
 import type { Page } from "../components/Layout";
 
 interface UsersPageProps {
@@ -23,7 +25,17 @@ export const UsersPage = ({ onNavigate }: UsersPageProps) => {
   const { onlineUsers, connected } = usePresenceStore();
   const { teamMembers, getTeamMembers } = useTeamStore();
   const { activeTeamId, activeTeamName } = useSettingsStore();
+  const { send: sendVoicemail } = useVoicemailStore();
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [voicemailStatus, setVoicemailStatus] = useState<
+    | { kind: "idle" }
+    | { kind: "recording" }
+    | { kind: "sending" }
+    | { kind: "sent"; name: string }
+    | { kind: "failed"; reason: string }
+  >({ kind: "idle" });
+  const recorderRef = useRef<VoicemailRecorder | null>(null);
+  if (recorderRef.current === null) recorderRef.current = new VoicemailRecorder();
 
   const {
     call,
@@ -51,6 +63,10 @@ export const UsersPage = ({ onNavigate }: UsersPageProps) => {
   );
 
   const selectedUser = teamOnlineUsers.find((u) => u.user_id === selectedUserId);
+
+  // Voicemail mode: when the picked user is BUSY (yellow), the PTT
+  // button records a message instead of opening a call. Mirrors mac.
+  const voicemailMode = selectedUser?.mode === "YELLOW";
 
   const getUserState = (uid: string): UserRowState => {
     if (call.status !== "idle" && call.peerId === uid) {
@@ -168,8 +184,11 @@ export const UsersPage = ({ onNavigate }: UsersPageProps) => {
                   rtcEndCall();
                   setSelectedUserId(null);
                 } else {
-                  // Clicking new user starts call immediately
                   setSelectedUserId(uid);
+                  // BUSY recipients route through the voicemail flow —
+                  // don't open a call; the PTT button captures and uploads.
+                  const target = teamOnlineUsers.find((u) => u.user_id === uid);
+                  if (target?.mode === "YELLOW") return;
                   if (call.status === "idle") {
                     startCall(uid);
                   }
@@ -222,25 +241,90 @@ export const UsersPage = ({ onNavigate }: UsersPageProps) => {
           targetName={
             call.status === "connected" || call.status === "connecting"
               ? call.peerName
-              : selectedUser?.name ?? null
+              : voicemailMode
+                ? `${selectedUser?.name ?? "user"} (leave a message)`
+                : selectedUser?.name ?? null
           }
           disabled={
-            call.status !== "connected" && call.status !== "connecting"
+            !voicemailMode &&
+            call.status !== "connected" &&
+            call.status !== "connecting"
           }
           isInCall={call.status === "connected" || call.status === "connecting"}
           onPress={() => {
+            if (voicemailMode) {
+              setVoicemailStatus({ kind: "recording" });
+              void recorderRef.current?.start().catch((e) => {
+                setVoicemailStatus({
+                  kind: "failed",
+                  reason: e instanceof Error ? e.message : "Mic unavailable",
+                });
+              });
+              return;
+            }
             if (call.status === "connected" || call.status === "connecting") {
               unmuteMic();
             }
           }}
           onRelease={() => {
+            if (voicemailMode) {
+              const recorder = recorderRef.current;
+              const targetName = selectedUser?.name ?? "them";
+              const targetId = selectedUser?.user_id;
+              const teamId = activeTeamId;
+              const senderId = userId;
+              if (!recorder || !targetId || !teamId || !senderId) {
+                void recorder?.cancel();
+                setVoicemailStatus({ kind: "idle" });
+                return;
+              }
+              setVoicemailStatus({ kind: "sending" });
+              void recorder.stop().then(async (result) => {
+                if (!result) {
+                  setVoicemailStatus({ kind: "idle" });
+                  return;
+                }
+                const ok = await sendVoicemail({
+                  blob: result.blob,
+                  mimeType: result.mimeType,
+                  duration_ms: result.duration_ms,
+                  teamId,
+                  senderId,
+                  recipientId: targetId,
+                });
+                if (ok) {
+                  setVoicemailStatus({ kind: "sent", name: targetName });
+                  setTimeout(() => setVoicemailStatus({ kind: "idle" }), 2500);
+                } else {
+                  setVoicemailStatus({
+                    kind: "failed",
+                    reason: useVoicemailStore.getState().error ?? "Send failed",
+                  });
+                }
+              });
+              return;
+            }
             if (call.status === "connected" || call.status === "connecting") {
               muteMic();
             }
           }}
         />
         <div className="flex justify-center text-[10px]" style={{ color: DARK.TEXT_FAINT }}>
-          <span>{connected ? "● Connected" : "○ Connecting…"}</span>
+          {voicemailStatus.kind === "recording" && (
+            <span style={{ color: DARK.WARN }}>● Recording…</span>
+          )}
+          {voicemailStatus.kind === "sending" && <span>Sending message…</span>}
+          {voicemailStatus.kind === "sent" && (
+            <span style={{ color: DARK.ACCENT }}>
+              Message sent to {voicemailStatus.name} ✓
+            </span>
+          )}
+          {voicemailStatus.kind === "failed" && (
+            <span style={{ color: DARK.DANGER }}>{voicemailStatus.reason}</span>
+          )}
+          {voicemailStatus.kind === "idle" && (
+            <span>{connected ? "● Connected" : "○ Connecting…"}</span>
+          )}
         </div>
       </div>
     </div>
