@@ -33,10 +33,14 @@ interface VoicemailState {
   stopWatching: () => void;
 }
 
-let pollHandle: ReturnType<typeof setInterval> | null = null;
-let watchingFor: string | null = null;
+export const useVoicemailStore = create<VoicemailState>((set, get) => {
+  // Closure-scoped (not module-scoped) so HMR replacing this module
+  // creates a fresh polling lifecycle instead of leaking the old
+  // interval. Co-located with the actions that own them.
+  let pollHandle: ReturnType<typeof setInterval> | null = null;
+  let watchingFor: string | null = null;
 
-export const useVoicemailStore = create<VoicemailState>((set, get) => ({
+  return {
   voicemails: [],
   loading: false,
   error: null,
@@ -44,25 +48,27 @@ export const useVoicemailStore = create<VoicemailState>((set, get) => ({
   load: async (userId) => {
     set({ loading: true, error: null });
 
-    // Two queries — one for inbox (we are the recipient), one for sent (we
-    // are the sender). Done sequentially because the embed alias differs.
-    const inboxRes = await supabase
-      .from("voicemails")
-      .select(
-        "id, team_id, sender_id, recipient_id, storage_path, duration_ms, created_at, played_at, sender:profiles!voicemails_sender_id_fkey(id, display_name)",
-      )
-      .eq("recipient_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(100);
-
-    const sentRes = await supabase
-      .from("voicemails")
-      .select(
-        "id, team_id, sender_id, recipient_id, storage_path, duration_ms, created_at, played_at, recipient:profiles!voicemails_recipient_id_fkey(id, display_name)",
-      )
-      .eq("sender_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(100);
+    // Inbox + sent live in the same table but PostgREST embed aliases
+    // ("sender:profiles" vs "recipient:profiles") force two queries.
+    // They're independent — fire in parallel to halve the round-trip.
+    const [inboxRes, sentRes] = await Promise.all([
+      supabase
+        .from("voicemails")
+        .select(
+          "id, team_id, sender_id, recipient_id, storage_path, duration_ms, created_at, played_at, sender:profiles!voicemails_sender_id_fkey(id, display_name)",
+        )
+        .eq("recipient_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(100),
+      supabase
+        .from("voicemails")
+        .select(
+          "id, team_id, sender_id, recipient_id, storage_path, duration_ms, created_at, played_at, recipient:profiles!voicemails_recipient_id_fkey(id, display_name)",
+        )
+        .eq("sender_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(100),
+    ]);
 
     if (inboxRes.error || sentRes.error) {
       set({
@@ -128,6 +134,20 @@ export const useVoicemailStore = create<VoicemailState>((set, get) => ({
     }
     all.sort((a, b) => b.created_at.localeCompare(a.created_at));
 
+    // Skip the `set` (and the re-render of every subscriber) when the
+    // poll didn't actually change anything. Each row is uniquely
+    // identified by id; played_at is the only field that mutates after
+    // creation, so an id+played_at fingerprint is enough to detect drift.
+    const prev = get().voicemails;
+    const unchanged =
+      prev.length === all.length &&
+      prev.every(
+        (v, i) => v.id === all[i].id && v.played_at === all[i].played_at,
+      );
+    if (unchanged) {
+      if (get().loading) set({ loading: false });
+      return;
+    }
     set({ voicemails: all, loading: false });
   },
 
@@ -233,7 +253,17 @@ export const useVoicemailStore = create<VoicemailState>((set, get) => ({
     watchingFor = null;
     set({ voicemails: [] });
   },
-}));
+  };
+});
+
+// Vite HMR: when this module reloads, clear any interval the previous
+// version owned. Without this, every hot-reload during development stacks
+// another polling timer on top of the previous one. No-op in production.
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    useVoicemailStore.getState().stopWatching();
+  });
+}
 
 /// Returns a sensible file extension for the recorded mime so the storage
 /// path is human-friendly. Falls back to `webm` since that's what Chrome

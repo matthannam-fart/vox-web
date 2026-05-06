@@ -79,8 +79,11 @@ export const Sidebar = ({ onNavigate, currentPage }: SidebarProps) => {
               className="flex flex-col items-center justify-center w-[52px] py-1.5 rounded cursor-pointer relative"
               style={{
                 background: isActive ? "rgba(255,255,255,0.06)" : "transparent",
-                borderLeft: isActive ? `2px solid ${DARK.ACCENT}` : "2px solid transparent",
+                // `border` shorthand zeroes all sides — so it must come BEFORE
+                // `borderLeft`, otherwise the active-state accent stripe is
+                // silently overridden and never renders.
                 border: "none",
+                borderLeft: isActive ? `2px solid ${DARK.ACCENT}` : "2px solid transparent",
               }}
               title={item.label}
             >
