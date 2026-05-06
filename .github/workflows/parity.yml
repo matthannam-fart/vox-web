@@ -1,0 +1,60 @@
+name: parity
+
+# Cross-client parity check. Clones the sister repo (vox-mac, private) and
+# runs scripts/check-parity.sh. Fails the run if PARITY.md has drifted,
+# invite-code placeholders are stale, the join_team_by_code RPC is missing
+# from a client, wire-protocol messages don't match, or status modes
+# diverge. See PARITY.md for the full contract.
+#
+# Setup (one-time):
+#   1. Generate an ed25519 keypair on your machine:
+#        ssh-keygen -t ed25519 -f ~/.ssh/vox-mac-deploy -N "" \
+#          -C "vox-web-parity-check"
+#   2. Add the *public* half (~/.ssh/vox-mac-deploy.pub) to vox-mac as a
+#      read-only deploy key:
+#        github.com/matthannam-fart/vox-mac/settings/keys → Add deploy key
+#        Title: vox-web parity check ; Allow write access: NO
+#   3. Save the *private* half (~/.ssh/vox-mac-deploy) as the repo secret
+#      VOX_MAC_DEPLOY_KEY here:
+#        Settings → Secrets and variables → Actions → New repository secret
+#        Name: VOX_MAC_DEPLOY_KEY ; Secret: <full contents of the file>
+# Without that secret the vox-mac checkout below fails with a clear auth
+# error in the run log — the loud failure mode when the key rotates.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: parity-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout vox-web
+        uses: actions/checkout@v4
+        with:
+          path: vox-web
+
+      # actions/checkout natively supports SSH deploy keys via `ssh-key:`.
+      # That side-steps the org/personal PAT plumbing entirely — the key is
+      # repo-scoped (vox-mac only) and read-only, which is what we want.
+      - name: Checkout vox-mac (private — read via deploy key)
+        uses: actions/checkout@v4
+        with:
+          repository: matthannam-fart/vox-mac
+          path: vox-mac
+          ref: main
+          ssh-key: ${{ secrets.VOX_MAC_DEPLOY_KEY }}
+
+      - name: Run parity check
+        env:
+          VOX_MAC: ${{ github.workspace }}/vox-mac
+          VOX_WEB: ${{ github.workspace }}/vox-web
+        run: bash "$VOX_WEB/scripts/check-parity.sh"
