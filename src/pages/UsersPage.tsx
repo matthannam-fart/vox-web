@@ -25,7 +25,7 @@ export const UsersPage = ({ onNavigate }: UsersPageProps) => {
   const { onlineUsers, connected } = usePresenceStore();
   const { teamMembers, getTeamMembers } = useTeamStore();
   const { activeTeamId, activeTeamName } = useSettingsStore();
-  const { send: sendVoicemail } = useVoicemailStore();
+  const { send: sendVoicemail, error: voicemailError } = useVoicemailStore();
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [voicemailStatus, setVoicemailStatus] = useState<
     | { kind: "idle" }
@@ -298,7 +298,7 @@ export const UsersPage = ({ onNavigate }: UsersPageProps) => {
                 } else {
                   setVoicemailStatus({
                     kind: "failed",
-                    reason: useVoicemailStore.getState().error ?? "Send failed",
+                    reason: voicemailError ?? "Send failed",
                   });
                 }
               });

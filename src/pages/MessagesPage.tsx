@@ -12,13 +12,14 @@ interface MessagesPageProps {
 
 export const MessagesPage = ({ onNavigate }: MessagesPageProps) => {
   const { userId } = useAuthStore();
-  const { voicemails, load, markPlayed, remove, signedUrl } = useVoicemailStore();
+  const { voicemails, markPlayed, remove, signedUrl } = useVoicemailStore();
   const [playingId, setPlayingId] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  useEffect(() => {
-    if (userId) void load(userId);
-  }, [userId, load]);
+  // No mount-time fetch here: App.tsx wires `startWatching(userId)` once
+  // on sign-in, which seeds and then polls the store every 15s. A
+  // duplicate `load()` here just doubles the round-trips on every nav.
+  void userId;
 
   // Stop any audio when leaving the page so playback doesn't leak.
   useEffect(() => {
