@@ -88,3 +88,22 @@ export interface CallState {
   peerName: string | null;
   roomCode: string | null;
 }
+
+// ── Voicemails ───────────────────────────────────────────────
+// Mirrors public.voicemails 1:1 with embedded sender/recipient names.
+
+export type VoicemailDirection = "inbox" | "sent";
+
+export interface Voicemail {
+  id: string;
+  team_id: string;
+  sender_id: string;
+  sender_name: string;
+  recipient_id: string;
+  recipient_name: string;
+  storage_path: string;
+  duration_ms: number;
+  created_at: string;
+  played_at: string | null;
+  direction: VoicemailDirection;
+}

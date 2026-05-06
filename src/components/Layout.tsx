@@ -3,7 +3,7 @@ import { Sidebar } from "./Sidebar";
 import { DARK, LIGHT, PANEL_RADIUS } from "../lib/theme";
 import { useIsMobile, useIsStandalone } from "../lib/useMediaQuery";
 
-export type Page = "welcome" | "users" | "teams" | "radio" | "settings";
+export type Page = "welcome" | "users" | "teams" | "radio" | "messages" | "settings";
 
 interface LayoutProps {
   children: React.ReactNode;

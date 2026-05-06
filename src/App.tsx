@@ -9,6 +9,8 @@ import { TeamsPage } from "./pages/TeamsPage";
 import { UsersPage } from "./pages/UsersPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { RadioPage } from "./pages/RadioPage";
+import { MessagesPage } from "./pages/MessagesPage";
+import { useVoicemailStore } from "./stores/voicemailStore";
 import { Layout, type Page } from "./components/Layout";
 import { InstallPrompt } from "./components/InstallPrompt";
 import { PopoutButton } from "./components/PopoutButton";
@@ -21,6 +23,7 @@ export const App = () => {
   const displayName = authDisplayName || email || "";
   const { connect, disconnect, mode } = usePresenceStore();
   const { loadMyTeams } = useTeamStore();
+  const { startWatching, stopWatching } = useVoicemailStore();
 
   // Derive page from auth/team state instead of using an effect
   const defaultPage: Page = userId && activeTeamId ? "users" : "welcome";
@@ -40,6 +43,15 @@ export const App = () => {
   useEffect(() => {
     if (userId) loadMyTeams(userId);
   }, [userId, loadMyTeams]);
+
+  // Voicemail polling — runs while signed in, stops on sign-out so the
+  // INBOX badge updates within ~15s of a new message.
+  useEffect(() => {
+    if (userId) {
+      startWatching(userId);
+      return () => stopWatching();
+    }
+  }, [userId, startWatching, stopWatching]);
 
   // Connect/disconnect presence when team changes
   useEffect(() => {
@@ -83,6 +95,8 @@ export const App = () => {
         return <SettingsPage onNavigate={setPage} />;
       case "radio":
         return <RadioPage onNavigate={setPage} />;
+      case "messages":
+        return <MessagesPage onNavigate={setPage} />;
       default:
         return null;
     }
