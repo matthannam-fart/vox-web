@@ -94,61 +94,42 @@ export const useTeamStore = create<TeamState>((set, get) => ({
     return team;
   },
 
-  joinTeamByCode: async (code, userId) => {
+  joinTeamByCode: async (code, _userId) => {
     set({ error: null });
     const trimmedCode = code.toUpperCase().trim();
     console.log("[teamStore] joinTeamByCode:", trimmedCode);
 
-    // Look up team by invite code
-    const { data: teams, error: lookupError } = await supabase
-      .from("teams")
-      .select("id, name, invite_code")
-      .eq("invite_code", trimmedCode);
+    // SECURITY DEFINER RPC — looks up the team and inserts the membership
+    // in one privileged step. Replaces the old "select teams by code →
+    // insert team_members" pair, which RLS now blocks (a non-member
+    // can't read the row they're trying to join).
+    const { data, error } = await supabase.rpc("join_team_by_code", {
+      code: trimmedCode,
+    });
 
-    console.log("[teamStore] lookup result:", { teams, lookupError });
+    console.log("[teamStore] join result:", { data, error });
 
-    if (lookupError) {
-      set({ error: `Lookup failed: ${lookupError.message}` });
+    if (error) {
+      const msg = /no team for code/i.test(error.message)
+        ? `No team found for code "${trimmedCode}"`
+        : `Join failed: ${error.message}`;
+      set({ error: msg });
       return null;
     }
-    if (!teams || teams.length === 0) {
+
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row) {
       set({ error: `No team found for code "${trimmedCode}"` });
       return null;
     }
 
-    const teamData = teams[0];
-
-    // Check if already a member
-    const { data: existingMember } = await supabase
-      .from("team_members")
-      .select("user_id")
-      .eq("team_id", teamData.id)
-      .eq("user_id", userId)
-      .maybeSingle();
-
-    if (!existingMember) {
-      const { error: joinError } = await supabase
-        .from("team_members")
-        .insert({ team_id: teamData.id, user_id: userId, role: "member" });
-
-      console.log("[teamStore] join result:", { joinError });
-
-      if (joinError) {
-        set({ error: `Join failed: ${joinError.message}` });
-        return null;
-      }
-    } else {
-      console.log("[teamStore] already a member");
-    }
-
     const team: TeamInfo = {
-      id: teamData.id,
-      name: teamData.name,
-      invite_code: teamData.invite_code ?? "",
+      id: row.id,
+      name: row.name,
+      invite_code: row.invite_code ?? "",
       role: "member",
     };
 
-    // Add to local list if not already there
     const existing = get().teams.find((t) => t.id === team.id);
     if (!existing) {
       set({ teams: [...get().teams, team] });
