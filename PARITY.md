@@ -42,9 +42,11 @@ These live in the Supabase project `kfxiawqlboqnwzkxbyid` and are committed as m
 
 JSON over WebSocket, snake_case field names.
 
-**Outbound** (client → relay): `REGISTER`, `MODE_UPDATE`, `PING`, `CALL_REQUEST`, `CALL_ACCEPT`, `CALL_DECLINE`, `CALL_END`, `WEBRTC_SIGNAL`.
+**Outbound** (client → relay): `REGISTER`, `MODE_UPDATE`, `PING`, `CALL_REQUEST`, `CALL_ACCEPT`, `CALL_DECLINE`, `CALL_END`, `WEBRTC_SIGNAL`, `PIN_REQUEST`, `PIN_ACCEPT`, `PIN_DECLINE`, `PIN_LEAVE`, `PIN_REMOVE`.
 
-**Inbound** (relay → client): `PRESENCE_UPDATE`, `REGISTERED`, `PONG`, `INCOMING_CALL`, `CALL_ACCEPTED`, `CALL_DECLINED`, `CALL_ENDED`, `WEBRTC_SIGNAL`, `ERROR`.
+**Inbound** (relay → client): `PRESENCE_UPDATE`, `REGISTERED`, `PONG`, `INCOMING_CALL`, `CALL_ACCEPTED`, `CALL_DECLINED`, `CALL_ENDED`, `WEBRTC_SIGNAL`, `INCOMING_PIN`, `PIN_ACCEPTED`, `PIN_DECLINED`, `PIN_PARTNER_LEFT`, `PIN_REMOVED`, `ERROR`.
+
+**Pin (open mic) protocol.** The 5 pin verbs implement the mutual-consent persistent open-line feature. Symmetric to `CALL_*`: outbound from one peer becomes the matching `*ED` notification on the other. Lifecycle and state are owned client-side (relay only routes); session-only — no pair tracking on the server. Mode auto-flips to `YELLOW` while pinned and restores on unpin.
 
 Canonical Swift definition: `vox-mac/Sources/Vox/Models/PresenceMessages.swift`.
 Canonical TS definition: `vox-web/src/types/index.ts` (`PresenceOutMessage` / `PresenceInMessage`).

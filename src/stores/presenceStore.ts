@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { PresenceClient } from "../lib/presence";
-import type { Mode, PresenceUser, PresenceInMessage, CallState } from "../types";
+import type { Mode, PresenceUser, PresenceInMessage, PresenceOutMessage, CallState } from "../types";
+import { usePinStore } from "./pinStore";
 
 // Callback for forwarding WebRTC signals to the WebRTC manager
 type WebRTCSignalCallback = (signal: unknown) => void;
@@ -39,6 +40,9 @@ interface PresenceState {
   disconnect: () => void;
   setMode: (mode: Mode) => void;
   setIncognito: (incognito: boolean) => void;
+  /// Forward an outbound message through the WebSocket client. Used by
+  /// pinStore for the PIN_* verbs so all wire I/O stays in one place.
+  send: (msg: PresenceOutMessage) => void;
 
   // Call actions
   callUser: (targetUserId: string) => void;
@@ -66,6 +70,10 @@ export const usePresenceStore = create<PresenceState>((set, get) => ({
         switch (msg.type) {
           case "PRESENCE_UPDATE":
             set({ onlineUsers: msg.users });
+            // Pin pairs aren't tracked server-side — when a partner goes
+            // offline, the only signal we get is their absence from this
+            // list. Reconcile on every update.
+            usePinStore.getState().reconcile(new Set(msg.users.map((u) => u.user_id)));
             break;
           case "INCOMING_CALL":
             set({
@@ -102,6 +110,27 @@ export const usePresenceStore = create<PresenceState>((set, get) => ({
           case "WEBRTC_SIGNAL":
             _onWebRTCSignal?.(msg.signal);
             break;
+          case "INCOMING_PIN":
+            usePinStore.getState().receiveIncoming(msg.from_user_id, msg.from_name);
+            break;
+          case "PIN_ACCEPTED": {
+            // Resolve display name from the current presence list — the
+            // accept message itself only carries the id since the receiver
+            // already saw the requester via INCOMING_PIN earlier.
+            const name =
+              get().onlineUsers.find((u) => u.user_id === msg.from_user_id)?.name ?? "User";
+            usePinStore.getState().receiveAccepted(msg.from_user_id, name);
+            break;
+          }
+          case "PIN_DECLINED":
+            usePinStore.getState().receiveDeclined(msg.from_user_id);
+            break;
+          case "PIN_PARTNER_LEFT":
+            usePinStore.getState().receivePartnerLeft(msg.from_user_id);
+            break;
+          case "PIN_REMOVED":
+            usePinStore.getState().receiveRemoved(msg.from_user_id);
+            break;
         }
       },
       // Status handler
@@ -123,6 +152,10 @@ export const usePresenceStore = create<PresenceState>((set, get) => ({
   },
 
   setIncognito: (incognito) => set({ incognito }),
+
+  send: (msg) => {
+    get().client?.send(msg);
+  },
 
   callUser: (targetUserId) => {
     get().client?.send({ type: "CALL_REQUEST", target_user_id: targetUserId });

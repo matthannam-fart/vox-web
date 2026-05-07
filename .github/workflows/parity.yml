@@ -45,7 +45,24 @@ jobs:
       # actions/checkout natively supports SSH deploy keys via `ssh-key:`.
       # That side-steps the org/personal PAT plumbing entirely — the key is
       # repo-scoped (vox-mac only) and read-only, which is what we want.
-      - name: Checkout vox-mac (private — read via deploy key)
+      #
+      # Try the *matching branch name* on vox-mac first, fall back to main.
+      # See the matching comment in vox-mac's parity workflow — this is
+      # what lets cross-repo coordinated changes (e.g. wire-protocol
+      # additions where both clients must move together) cross-validate
+      # against each other instead of the stale main on the other side.
+      - name: Checkout vox-mac (matching branch — private, read via deploy key)
+        id: mac_branch
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          repository: matthannam-fart/vox-mac
+          path: vox-mac
+          ref: ${{ github.head_ref }}
+          ssh-key: ${{ secrets.VOX_MAC_DEPLOY_KEY }}
+
+      - name: Checkout vox-mac (main fallback — private, read via deploy key)
+        if: steps.mac_branch.outcome != 'success'
         uses: actions/checkout@v4
         with:
           repository: matthannam-fart/vox-mac
