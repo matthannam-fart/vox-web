@@ -294,6 +294,12 @@ export const UsersPage = ({ onNavigate }: UsersPageProps) => {
                 });
                 if (ok) {
                   setVoicemailStatus({ kind: "sent", name: targetName });
+                  // Voicemail is a one-shot action, not a persistent
+                  // channel. Clear the selection so the user isn't
+                  // left feeling "tuned in" to someone they just left
+                  // an asynchronous message for; the next click picks
+                  // a new target cleanly.
+                  setSelectedUserId(null);
                   setTimeout(() => setVoicemailStatus({ kind: "idle" }), 2500);
                 } else {
                   setVoicemailStatus({
