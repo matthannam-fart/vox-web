@@ -17,20 +17,18 @@ export interface RecordingResult {
   duration_ms: number;
 }
 
-/// Picks the best mime type the browser supports for our pipeline. Order:
-/// Safari-friendly mp4 first, then Chrome/Firefox webm, finally bare webm.
-function pickMimeType(): string {
-  const candidates = [
-    "audio/mp4",
-    "audio/webm;codecs=opus",
-    "audio/webm",
-  ];
-  for (const t of candidates) {
-    if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(t)) {
-      return t;
-    }
-  }
-  return ""; // fall back to MediaRecorder default
+/// Mac's `AVPlayer` doesn't decode WebM, so a voicemail recorded as
+/// `audio/webm` from Chrome/Firefox arrives intact in the recipient's
+/// inbox but silently won't play. We therefore force `audio/mp4` (an
+/// MP4 container with AAC) — the only `MediaRecorder` mime that mac
+/// can play natively. Returns null if the browser can't record mp4
+/// (older Firefox builds in particular); `start()` translates that
+/// into a clear user-facing error rather than producing a webm file
+/// that half the team can't hear.
+function pickMimeType(): string | null {
+  if (typeof MediaRecorder === "undefined") return null;
+  if (MediaRecorder.isTypeSupported("audio/mp4")) return "audio/mp4";
+  return null;
 }
 
 export class VoicemailRecorder {
@@ -47,13 +45,22 @@ export class VoicemailRecorder {
   async start(): Promise<void> {
     await this.cancel();
 
+    // Verify mp4 recording support BEFORE asking for the mic — failing
+    // here means the user never sees the macOS permission prompt for
+    // a feature their browser can't deliver.
+    const mime = pickMimeType();
+    if (!mime) {
+      throw new Error(
+        "Voicemail recording isn't supported in this browser. Use Chrome or Safari to leave a message.",
+      );
+    }
+    this.mimeType = mime;
+
     this.stream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
     });
 
-    this.mimeType = pickMimeType();
-    const opts: MediaRecorderOptions = this.mimeType ? { mimeType: this.mimeType } : {};
-    this.recorder = new MediaRecorder(this.stream, opts);
+    this.recorder = new MediaRecorder(this.stream, { mimeType: this.mimeType });
 
     this.chunks = [];
     this.recorder.addEventListener("dataavailable", (e) => {
