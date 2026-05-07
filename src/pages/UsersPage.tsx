@@ -4,9 +4,10 @@ import { useTeamStore } from "../stores/teamStore";
 import { useSettingsStore } from "../stores/settingsStore";
 import { useAuthStore } from "../stores/authStore";
 import { useVoicemailStore } from "../stores/voicemailStore";
+import { usePinStore } from "../stores/pinStore";
 import { useWebRTC } from "../hooks/useWebRTC";
 import { useNotifications } from "../hooks/useNotifications";
-import { UserRow, type UserRowState } from "../components/UserRow";
+import { UserRow, type UserRowState, type RowPinState } from "../components/UserRow";
 import { ContentHeader } from "../components/ContentHeader";
 import { PTTButton } from "../components/PTTButton";
 import { OutgoingCallBanner } from "../components/OutgoingCallBanner";
@@ -26,6 +27,16 @@ export const UsersPage = ({ onNavigate }: UsersPageProps) => {
   const { teamMembers, getTeamMembers } = useTeamStore();
   const { activeTeamId, activeTeamName } = useSettingsStore();
   const { send: sendVoicemail, error: voicemailError } = useVoicemailStore();
+  const {
+    partner: pinPartner,
+    incoming: pinIncoming,
+    outgoing: pinOutgoing,
+    requestPin,
+    accept: acceptPin,
+    decline: declinePin,
+    cancelOutgoing: cancelPinOutgoing,
+    unpin,
+  } = usePinStore();
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [voicemailStatus, setVoicemailStatus] = useState<
     | { kind: "idle" }
@@ -76,6 +87,26 @@ export const UsersPage = ({ onNavigate }: UsersPageProps) => {
     if (uid === selectedUserId) return "selected";
     return "idle";
   };
+
+  // Per-row pin state: derived from pinStore. Hidden when we're already
+  // pinned to someone else so the UI can't suggest a request that the
+  // model would auto-decline.
+  const getPinState = (uid: string): RowPinState => {
+    if (pinPartner?.userId === uid) return "partner";
+    if (pinOutgoing.has(uid)) return "requesting";
+    if (pinPartner !== null) return "hidden";
+    return "idle";
+  };
+
+  const onTogglePin = (uid: string, name: string) => {
+    const state = getPinState(uid);
+    if (state === "idle") requestPin({ userId: uid, name });
+    else if (state === "requesting") cancelPinOutgoing(uid);
+    else if (state === "partner") unpin();
+  };
+
+  // First pending incoming request — others queue behind it.
+  const firstIncomingPin = Object.values(pinIncoming)[0];
 
   // Determine if we're the receiver of an incoming call
   const isIncomingCall =
@@ -139,6 +170,14 @@ export const UsersPage = ({ onNavigate }: UsersPageProps) => {
           />
         )}
 
+      {firstIncomingPin && (
+        <PinRequestBanner
+          requesterName={firstIncomingPin.name}
+          onAccept={() => acceptPin(firstIncomingPin)}
+          onDecline={() => declinePin(firstIncomingPin)}
+        />
+      )}
+
       <div className="flex-1 overflow-y-auto">
         {/* Online section */}
         <div className="px-4 pt-2.5 pb-1 flex items-center justify-between">
@@ -172,6 +211,8 @@ export const UsersPage = ({ onNavigate }: UsersPageProps) => {
               name={user.name}
               mode={user.mode}
               state={getUserState(user.user_id)}
+              pinState={getPinState(user.user_id)}
+              onTogglePin={() => onTogglePin(user.user_id, user.name)}
               onClick={(uid) => {
                 // First interaction is a good time to request Notification permission
                 // (Safari requires a user gesture). Done once per session.
@@ -336,3 +377,52 @@ export const UsersPage = ({ onNavigate }: UsersPageProps) => {
     </div>
   );
 };
+
+/// Banner above the user list when someone has sent a pin request.
+/// Mirrors the mac PinRequestBanner — one decision, two buttons.
+const PinRequestBanner = ({
+  requesterName,
+  onAccept,
+  onDecline,
+}: {
+  requesterName: string;
+  onAccept: () => void;
+  onDecline: () => void;
+}) => (
+  <div
+    className="flex items-center gap-2 px-3 py-2"
+    style={{
+      background: `${DARK.WARN}1a`,
+      borderBottom: `1px solid ${DARK.WARN}4d`,
+    }}
+  >
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: DARK.WARN }}>
+      <path d="M12 17v5" />
+      <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z" />
+    </svg>
+    <div className="flex-1 min-w-0 leading-tight">
+      <div className="text-[12px] font-semibold truncate" style={{ color: DARK.TEXT }}>
+        {requesterName} wants to pin you
+      </div>
+      <div className="text-[9px]" style={{ color: DARK.TEXT_DIM }}>
+        Open a two-way line — like being in the room.
+      </div>
+    </div>
+    <button
+      type="button"
+      onClick={onDecline}
+      className="text-[11px] bg-transparent border-none cursor-pointer"
+      style={{ color: DARK.TEXT_DIM }}
+    >
+      Decline
+    </button>
+    <button
+      type="button"
+      onClick={onAccept}
+      className="text-[11px] font-semibold border-none cursor-pointer rounded px-2.5 py-1"
+      style={{ background: DARK.WARN, color: "#fff" }}
+    >
+      Pin back
+    </button>
+  </div>
+);

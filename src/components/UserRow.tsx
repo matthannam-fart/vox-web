@@ -4,12 +4,18 @@ import { DARK, COLORS } from "../lib/theme";
 
 export type UserRowState = "idle" | "selected" | "connecting" | "live";
 
+/// Visual state for the per-row pin button. Computed by the page from
+/// pinStore so the row stays a dumb presentational component.
+export type RowPinState = "idle" | "requesting" | "partner" | "hidden";
+
 interface UserRowProps {
   userId: string;
   name: string;
   mode: Mode | "OFFLINE";
   state?: UserRowState;
   onClick?: (userId: string) => void;
+  pinState?: RowPinState;
+  onTogglePin?: () => void;
 }
 
 const STATE_STYLES: Record<UserRowState, {
@@ -49,7 +55,15 @@ const STATE_STYLES: Record<UserRowState, {
   },
 };
 
-export const UserRow = ({ userId, name, mode, state = "idle", onClick }: UserRowProps) => {
+export const UserRow = ({
+  userId,
+  name,
+  mode,
+  state = "idle",
+  onClick,
+  pinState = "hidden",
+  onTogglePin,
+}: UserRowProps) => {
   const isOffline = mode === "OFFLINE";
   const style = STATE_STYLES[state];
 
@@ -97,6 +111,68 @@ export const UserRow = ({ userId, name, mode, state = "idle", onClick }: UserRow
           {style.label}
         </span>
       )}
+
+      {pinState === "partner" && (
+        <span
+          className="text-[9px] font-extrabold tracking-[1px] flex-shrink-0 px-1.5 py-0.5 rounded-[3px]"
+          style={{
+            color: COLORS.YELLOW,
+            background: `${COLORS.YELLOW}21`,
+            border: `1px solid ${COLORS.YELLOW}66`,
+          }}
+        >
+          ROOM
+        </span>
+      )}
+      {pinState !== "hidden" && (
+        <PinIconButton state={pinState} onClick={onTogglePin} />
+      )}
     </div>
+  );
+};
+
+/// Small pin glyph next to each user name. Click cycles through the
+/// available actions for the row's current state. Stops propagation so
+/// it doesn't bubble up to the row's onClick (which selects the user).
+const PinIconButton = ({
+  state,
+  onClick,
+}: {
+  state: RowPinState;
+  onClick?: () => void;
+}) => {
+  const titles: Record<RowPinState, string> = {
+    partner: "Unpin",
+    requesting: "Cancel pin request",
+    idle: "Pin (open mic with this user)",
+    hidden: "",
+  };
+  const colors: Record<RowPinState, string> = {
+    partner: COLORS.YELLOW,
+    requesting: DARK.TEXT_DIM,
+    idle: DARK.TEXT_FAINT,
+    hidden: "transparent",
+  };
+  // Lucide-ish minimal pin glyph as inline SVG keeps zero-deps. Filled
+  // when partner, slashed when an outgoing request is pending, outlined
+  // otherwise.
+  return (
+    <button
+      type="button"
+      title={titles[state]}
+      aria-label={titles[state]}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick?.();
+      }}
+      className="flex-shrink-0 bg-transparent border-none cursor-pointer p-0 w-[22px] h-[22px] flex items-center justify-center"
+      style={{ color: colors[state] }}
+    >
+      <svg width="14" height="14" viewBox="0 0 24 24" fill={state === "partner" ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 17v5" />
+        <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z" />
+        {state === "requesting" && <line x1="3" y1="3" x2="21" y2="21" />}
+      </svg>
+    </button>
   );
 };

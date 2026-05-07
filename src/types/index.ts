@@ -64,7 +64,13 @@ export type PresenceOutMessage =
   | { type: "CALL_ACCEPT"; target_user_id: string; room_code: string }
   | { type: "CALL_DECLINE"; target_user_id: string }
   | { type: "CALL_END"; target_user_id: string }
-  | { type: "WEBRTC_SIGNAL"; target_user_id: string; signal: unknown };
+  | { type: "WEBRTC_SIGNAL"; target_user_id: string; signal: unknown }
+  // Pin (open mic) — see stores/pinStore.ts.
+  | { type: "PIN_REQUEST"; target_user_id: string }
+  | { type: "PIN_ACCEPT"; target_user_id: string }
+  | { type: "PIN_DECLINE"; target_user_id: string }
+  | { type: "PIN_LEAVE"; target_user_id: string }
+  | { type: "PIN_REMOVE"; target_user_id: string };
 
 /** Messages received FROM the relay server */
 export type PresenceInMessage =
@@ -76,6 +82,12 @@ export type PresenceInMessage =
   | { type: "CALL_DECLINED"; from_user_id: string }
   | { type: "CALL_ENDED"; from_user_id: string }
   | { type: "WEBRTC_SIGNAL"; from_user_id: string; signal: unknown }
+  // Pin (open mic).
+  | { type: "INCOMING_PIN"; from_user_id: string; from_name: string }
+  | { type: "PIN_ACCEPTED"; from_user_id: string }
+  | { type: "PIN_DECLINED"; from_user_id: string }
+  | { type: "PIN_PARTNER_LEFT"; from_user_id: string }
+  | { type: "PIN_REMOVED"; from_user_id: string }
   | { type: "ERROR"; message: string };
 
 // ── Call State ───────────────────────────────────────────────
