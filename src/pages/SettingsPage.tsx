@@ -5,6 +5,7 @@ import { usePresenceStore } from "../stores/presenceStore";
 import { useTeamStore } from "../stores/teamStore";
 import { ToggleSwitch } from "../components/ToggleSwitch";
 import { DARK, MODE_LABELS } from "../lib/theme";
+import { shareInviteMessage } from "../lib/team";
 import type { Page } from "../components/Layout";
 
 interface SettingsPageProps {
@@ -92,9 +93,10 @@ export const SettingsPage = ({ onNavigate }: SettingsPageProps) => {
 
   const handleCopyInvite = () => {
     if (!activeTeam) return;
-    const url = `${window.location.origin}${import.meta.env.BASE_URL}?code=${activeTeam.invite_code}`;
-    const message = `Join me on Vox!\n\nTeam: ${activeTeam.name}\nCode: ${activeTeam.invite_code}\n\nOpen: ${url}`;
-    navigator.clipboard.writeText(message);
+    // Single source for the format — `lib/team.ts` mirrors the mac
+    // `Team.shareInviteMessage` extension. Avoids drift between this
+    // page and the team-header dropdown that share the same intent.
+    navigator.clipboard.writeText(shareInviteMessage(activeTeam));
     flashCopied("invite");
   };
 
