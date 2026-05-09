@@ -46,7 +46,9 @@ JSON over WebSocket, snake_case field names.
 
 **Inbound** (relay → client): `PRESENCE_UPDATE`, `REGISTERED`, `PONG`, `INCOMING_CALL`, `CALL_ACCEPTED`, `CALL_DECLINED`, `CALL_ENDED`, `WEBRTC_SIGNAL`, `INCOMING_PIN`, `PIN_ACCEPTED`, `PIN_DECLINED`, `PIN_PARTNER_LEFT`, `PIN_REMOVED`, `ERROR`.
 
-**Pin (open mic) protocol.** The 5 pin verbs implement the mutual-consent persistent open-line feature. Symmetric to `CALL_*`: outbound from one peer becomes the matching `*ED` notification on the other. Lifecycle and state are owned client-side (relay only routes); session-only — no pair tracking on the server. Mode auto-flips to `YELLOW` while pinned and restores on unpin.
+**Pin (open mic) protocol.** The 5 pin verbs implement the mutual-consent persistent open-line feature. Symmetric to `CALL_*`: outbound from one peer becomes the matching `*ED` notification on the other. Lifecycle and state are owned client-side (relay only routes); session-only — no pair tracking on the server. Mode auto-flips to `YELLOW` while pinned and restores on unpin. Audio runs over a long-lived WebRTC peer that opens on partner-set and tears down on unpin / partner-left / partner-disconnect; mic stays unmuted (no PTT gate) the whole time.
+
+**`WEBRTC_SIGNAL` multiplexing.** Both clients run two simultaneous WebRTC peers when a user is on a 1:1 call AND pinned with someone else: the call peer (PTT-gated) and the pin peer (open-mic). The relay routes only by `target_user_id`, so the wire envelope itself does not say which peer a signal is for. Recipients route inbound signals using `from_user_id`: matches the pinned partner → pin peer; otherwise → call peer. Glare resolution on pin establishment is deterministic — the lower lexicographic `user_id` is the offerer.
 
 Canonical Swift definition: `vox-mac/Sources/Vox/Models/PresenceMessages.swift`.
 Canonical TS definition: `vox-web/src/types/index.ts` (`PresenceOutMessage` / `PresenceInMessage`).
@@ -91,7 +93,7 @@ The mac repo has unit tests in `Tests/VoxTests/PresenceMessagesTests.swift` that
 | Dark / Light / System theme | ✅ | 🚧 (Dark + Light toggle, no System) | client |
 | Output device routing | ✅ (CoreAudio default swap) | — (browser handles) | local |
 | Realtime updates (vs polling) | ❌ (15–20 s polling) | ❌ (15–20 s polling) | tbd |
-| Open mic mode | ❌ | ❌ | tbd |
+| Open mic mode | ✅ (pin partner → long-lived WebRTC peer, mic always-on) | ✅ (pin partner → long-lived simple-peer, mic always-on) | local |
 
 When a row flips state, update **this file in both repos** in the same change set.
 
