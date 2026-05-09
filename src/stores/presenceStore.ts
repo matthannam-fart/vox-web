@@ -3,8 +3,11 @@ import { PresenceClient } from "../lib/presence";
 import type { Mode, PresenceUser, PresenceInMessage, PresenceOutMessage, CallState } from "../types";
 import { usePinStore } from "./pinStore";
 
-// Callback for forwarding WebRTC signals to the WebRTC manager
-type WebRTCSignalCallback = (signal: unknown) => void;
+// Callback for forwarding WebRTC signals to the WebRTC manager.
+// The from_user_id is included so the listener can route to either the
+// 1:1 call peer or the open-mic pin peer — both are live simultaneously
+// when a user is on a call AND pinned with someone else.
+type WebRTCSignalCallback = (fromUserId: string, signal: unknown) => void;
 let _onWebRTCSignal: WebRTCSignalCallback | null = null;
 
 export const setWebRTCSignalHandler = (handler: WebRTCSignalCallback | null) => {
@@ -108,7 +111,7 @@ export const usePresenceStore = create<PresenceState>((set, get) => ({
             });
             break;
           case "WEBRTC_SIGNAL":
-            _onWebRTCSignal?.(msg.signal);
+            _onWebRTCSignal?.(msg.from_user_id, msg.signal);
             break;
           case "INCOMING_PIN":
             usePinStore.getState().receiveIncoming(msg.from_user_id, msg.from_name);
